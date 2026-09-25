@@ -15,7 +15,8 @@ DEPLOY = {f'deploy/{name}' for name in (
     'stage-relay.mjs', 'staging-utils.mjs',
 )}
 SNAPSHOTS = {'packages/providers/data/japan-post-ems.json', 'packages/providers/data/mufg-usdjpy.json'}
-REQUIRED = ROOT_FILES | DOCS | SNAPSHOTS | {'examples/basic/index.html'} | {
+EXAMPLES = {'examples/basic/index.html', 'examples/polkaswap/README.md'}
+REQUIRED = ROOT_FILES | DOCS | SNAPSHOTS | EXAMPLES | {
     f'dist/{package}/index{extension}'
     for package in ('core', 'widget', 'relay', 'providers')
     for extension in ('.js', '.d.ts')
@@ -27,7 +28,7 @@ def public_path(path: str) -> bool:
     parts = PurePosixPath(path).parts
     if any(part.startswith('.') or part in {'private', 'output', 'node_modules', 'runtime'} for part in parts):
         return False
-    if path in ROOT_FILES | DOCS | DEPLOY | SNAPSHOTS | {'examples/basic/index.html'}:
+    if path in ROOT_FILES | DOCS | DEPLOY | SNAPSHOTS | EXAMPLES:
         return True
     if parts and parts[0] == 'dist' and len(parts) >= 3:
         return parts[1] in {'core', 'widget', 'relay', 'providers'} and path.endswith(('.js', '.js.map', '.d.ts', '.d.ts.map'))

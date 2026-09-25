@@ -42,6 +42,6 @@ test('public package check rejects nested staging readmes/licenses, private file
   checkFixture("for unsafe in ['output/staging/runtime/LICENSE', 'output/staging/README.md', 'private/relay.env', 'deploy/relay.env', 'docs/mof-readiness-2026-09-25.md', 'packages/relay/private/record.ts']:\n    reject({**entries, unsafe: b'fixture'})");
 });
 
-test('public package check rejects a missing provider snapshot or missing/incorrect root license', () => {
-  checkFixture("for missing in ['packages/providers/data/japan-post-ems.json', 'packages/providers/data/mufg-usdjpy.json', 'LICENSE']:\n    reject({key: value for key, value in entries.items() if key != missing})\nreject({**entries, 'LICENSE': b'Incorrect license'})");
+test('public package check rejects missing snapshots/examples or a missing/incorrect root license', () => {
+  checkFixture("for missing in ['packages/providers/data/japan-post-ems.json', 'packages/providers/data/mufg-usdjpy.json', 'examples/basic/index.html', 'examples/polkaswap/README.md', 'LICENSE']:\n    reject({key: value for key, value in entries.items() if key != missing})\nreject({**entries, 'LICENSE': b'Incorrect license'})");
 });

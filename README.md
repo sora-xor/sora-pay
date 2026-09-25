@@ -27,6 +27,8 @@ The package check uses Python 3's standard library, validates the public file al
 
 Run a static server from the repository root and open `examples/basic/index.html` to try the explicitly labeled offline demonstration. Its mock adapter never connects a wallet or transfers funds. HTTPS or localhost is required for the widget's Web Locks submission guard.
 
+For an existing-wallet integration, see the [Polkaswap adapter example](examples/polkaswap/README.md). It reproduces the actual host adapter and saved-order mounting flow, including wallet observers, exact fee/amount checks, `transaction.txId`, and relay signing-lease recovery.
+
 ## Browser integration
 
 ```ts
@@ -67,7 +69,7 @@ The example's `loadOrderFromTrustedMerchant` and `reportTransactionHint` are hos
 - `estimateFee(request)`, returning exact XOR `amountCodec` for the same constrained transfer.
 - `submit(request)`, returning a lowercase transaction hash after submission. It must recheck account, chain, recipient, native asset, amount, expiry and denomination immediately before signing.
 
-For the current Polkaswap SDK the comment-bearing transfer is `api.assets.transfer(asset, recipient, naturalAmount, { feeType: 'xor', comment: request.reference })`, which constructs `liquidityProxy.xorlessTransfer`. Keep `FPNumber.fromCodecValue(request.amountCodec, request.decimals)` exact and verify the reconstructed codec amount. Do not use floating-point numbers, market price feeds, arbitrary call data, user-supplied asset IDs or a hypothetical `transferWithComment` function.
+For the current Polkaswap SDK the comment-bearing transfer is `api.assets.transfer(asset, recipient, naturalAmount, { feeType: 'xor', comment: request.reference })`, which constructs `liquidityProxy.xorlessTransfer`. The [actual adapter example](examples/polkaswap/README.md) converts with `fromCodec` and verifies `new FPNumber(amount, request.decimals).toCodecString()` equals the original amount before invoking the SDK. Do not use floating-point numbers, market price feeds, arbitrary call data, user-supplied asset IDs or a hypothetical `transferWithComment` function.
 
 Only throw `WalletNotSubmittedError` when the adapter can prove no transaction was broadcast, such as a specifically identified pre-broadcast user cancellation. Generic transport failures, timeouts, disconnects and unknown errors are uncertain; never classify them as cancellation based only on an arbitrary error message.
 
