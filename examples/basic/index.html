@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Sora Pay — offline demonstration</title>
+    <link rel="icon" href="data:,">
+    <style>
+      body{margin:0;background:#fcfaf6;color:#25352a;font:16px/1.5 system-ui,sans-serif}main{max-width:680px;margin:64px auto;padding:0 24px}h1{font-size:42px;font-weight:500;letter-spacing:-2px;margin-bottom:12px}.demo{display:inline-block;background:#eee1b7;padding:6px 12px;border-radius:30px;font-size:13px}#events{white-space:pre-wrap;font-size:13px;overflow-wrap:anywhere}a{color:inherit}footer{font-size:13px;opacity:.7;margin-top:32px}
+    </style>
+  </head>
+  <body>
+    <main>
+      <span class="demo">OFFLINE DEMONSTRATION · NO REAL PAYMENTS</span>
+      <h1>Sora Pay</h1>
+      <p>A static HTML page with a mocked wallet and mocked finalized-chain evidence. No wallet connection, funds transfer or merchant order is performed.</p>
+      <div id="checkout"></div>
+      <pre id="events" aria-live="polite"></pre>
+      <footer>The displayed accounts and chain are test fixtures. Never send funds to this example.</footer>
+    </main>
+    <script type="module">
+      import { NATIVE_XOR_ASSET_ID, toCodec } from '../../dist/core/index.js';
+      import { mountSoraPay } from '../../dist/widget/index.js';
+      const bytes = crypto.getRandomValues(new Uint8Array(16));
+      const reference = 'sp_' + [...bytes].map(byte => byte.toString(16).padStart(2, '0')).join('');
+      const request = {
+        version: 1, merchant: { id: 'offline-demo', name: 'Mock merchant — no real payment' },
+        chainGenesisHash: '0x' + 'a'.repeat(64), assetId: NATIVE_XOR_ASSET_ID,
+        recipient: 'cnRsfMpGQ24tCKDLBbwde6NrS9ttrXN3hjX3zMHnVDeQokoBA',
+        payer: 'cnSG3F5hh3Z5JzV2Qzn6Ez71CL8NUTi68wr9zrjdNedrJht1C',
+        amountCodec: toCodec('1.862198'), decimals: 18, denomination: '1', reference,
+        expiresAt: new Date(Date.now() + 30 * 60_000).toISOString(),
+      };
+      const state = { account: request.payer, chainGenesisHash: request.chainGenesisHash, assetId: request.assetId, decimals: 18, denomination: '1', balanceCodec: toCodec('10') };
+      let submitted = false;
+      const adapter = {
+        connect: async () => state, getState: async () => state, subscribe: () => () => {},
+        estimateFee: async () => ({ amountCodec: toCodec('0.0007') }),
+        submit: async () => { submitted = true; return { transactionHash: '0x' + '1'.repeat(64) }; },
+      };
+      const element = mountSoraPay(document.querySelector('#checkout'), {
+        request, adapter,
+        reconcile: async () => submitted ? {
+          ...request, transactionHash: '0x' + '1'.repeat(64), blockHash: '0x' + '2'.repeat(64),
+          blockNumber: '123', eventIndex: 4, successful: true, finalized: true, finalizedAt: new Date().toISOString(),
+        } : null,
+      });
+      element.addEventListener('sora-pay:state', event => {
+        document.querySelector('#events').textContent = 'Mock payment state: ' + event.detail.state;
+      });
+    </script>
+  </body>
+</html>

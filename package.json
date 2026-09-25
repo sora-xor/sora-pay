@@ -1,0 +1,76 @@
+{
+  "name": "@sora/sora-pay",
+  "version": "0.1.0",
+  "description": "Exact native XOR payments, a browser checkout widget, and a private merchant relay",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=26 <27"
+  },
+  "packageManager": "yarn@4.10.3",
+  "exports": {
+    "./core": {
+      "types": "./dist/core/index.d.ts",
+      "import": "./dist/core/index.js"
+    },
+    "./widget": {
+      "types": "./dist/widget/index.d.ts",
+      "import": "./dist/widget/index.js"
+    },
+    "./relay": {
+      "types": "./dist/relay/index.d.ts",
+      "import": "./dist/relay/index.js"
+    },
+    "./providers": {
+      "types": "./dist/providers/index.d.ts",
+      "import": "./dist/providers/index.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "core": ["dist/core/index.d.ts"],
+      "widget": ["dist/widget/index.d.ts"],
+      "relay": ["dist/relay/index.d.ts"],
+      "providers": ["dist/providers/index.d.ts"]
+    }
+  },
+  "files": [
+    "./dist",
+    "./packages",
+    "./LICENSE",
+    "./README.md",
+    "./examples",
+    "./deploy",
+    "./docs/relay.md",
+    "./docs/providers.md",
+    "./docs/staging.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "yarn build && node --test tests/core/*.test.ts tests/widget/*.test.ts tests/relay/*.test.ts tests/providers/*.test.ts",
+    "test:core": "yarn build && node --test tests/core/*.test.ts tests/widget/*.test.ts",
+    "start": "node dist/relay/cli.js",
+    "prepack": "yarn build",
+    "check:package": "python3 deploy/check-package.py"
+  },
+  "dependencies": {
+    "@polkadot/api": "16.5.4",
+    "@polkadot/util": "14.0.2",
+    "@polkadot/util-crypto": "14.0.2",
+    "nodemailer": "7.0.13"
+  },
+  "resolutions": {
+    "@polkadot/keyring": "14.0.2",
+    "@polkadot/util": "14.0.2",
+    "@polkadot/util-crypto": "14.0.2",
+    "@polkadot/wasm-crypto": "7.5.4",
+    "@polkadot/wasm-bridge": "7.5.4",
+    "@polkadot/wasm-crypto-wasm": "7.5.4",
+    "@polkadot/wasm-util": "7.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "26.0.1",
+    "@types/nodemailer": "7.0.11",
+    "typescript": "5.9.3"
+  }
+}
