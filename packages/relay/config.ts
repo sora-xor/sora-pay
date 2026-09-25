@@ -11,7 +11,7 @@ export interface MerchantConfig {
   providers?: { fx?: 'mufg-daily'; shipping?: 'japan-post-ems' };
   sourceMetadata?: Record<string, unknown>;
   version: string;
-  merchant: { id: string; name: string; supportEmail: string; supportTelegram?: string; operatorName: string; dispatchPolicy: string; customsPolicy: string; privacyPolicy: string; cancellationPolicy: string };
+  merchant: { id: string; name: string; supportEmail?: string; supportTelegram?: string; operatorName: string; dispatchPolicy: string; customsPolicy: string; privacyPolicy: string; cancellationPolicy: string };
   pricing: { kind?: 'jpy-fixed-usd' | 'exact-xor'; mode?: 'daily' | 'launch-fixed'; version: string; jpyPerUsd: string; usdPerXor: string; fxSource: string; fxDate: string };
   product: { id: string; name: string; grams: number; packedGrams: number; packagingGrams?: number; stock?: number; priceJpy?: string; priceXor?: string };
   shipping: Array<{ id: string; countries: string[]; maxGrams: number; priceJpy?: string; priceXor?: string; label: string; reviewedAt: string }>;
@@ -33,9 +33,15 @@ export function accountAddress(value: string): string {
 export function validateConfig(value: MerchantConfig): MerchantConfig {
   if (!value || typeof value.enabled !== 'boolean') throw new Error('Invalid configuration');
   if (!value.enabled) return value;
-  for (const item of [value.version, ...Object.values(value.merchant), value.pricing.version]) {
+  const requiredMerchantFields = ['id', 'name', 'operatorName', 'dispatchPolicy', 'customsPolicy', 'privacyPolicy', 'cancellationPolicy'] as const;
+  for (const item of [value.version, ...requiredMerchantFields.map((field) => value.merchant?.[field]), value.pricing?.version]) {
     if (typeof item !== 'string' || !item.trim() || item.length > 5000) throw new Error('Missing merchant configuration');
   }
+  // Public support is separate from private notification credentials and customer contact details.
+  const { supportEmail, supportTelegram } = value.merchant;
+  if (supportEmail === undefined && supportTelegram === undefined) throw new Error('Missing public support contact');
+  if (supportEmail !== undefined && (typeof supportEmail !== 'string' || supportEmail.length > 254 || !/^[A-Za-z0-9][A-Za-z0-9._%+-]{0,63}@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$/.test(supportEmail) || supportEmail.split('@')[0]!.endsWith('.') || supportEmail.includes('..'))) throw new Error('Invalid public support email');
+  if (supportTelegram !== undefined && (typeof supportTelegram !== 'string' || !/^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(supportTelegram))) throw new Error('Invalid public Telegram handle');
   if (value.pricing.kind !== 'exact-xor' && (!/^https:\/\//.test(value.pricing.fxSource) || !/^\d{4}-\d{2}-\d{2}$/.test(value.pricing.fxDate))) throw new Error('Invalid FX snapshot');
   merchantPrice(value, value.product);
   if (value.chain.assetId.toLowerCase() !== NATIVE_XOR || !/^0x[a-fA-F0-9]{64}$/.test(value.chain.genesisHash)) throw new Error('Invalid native XOR chain');
