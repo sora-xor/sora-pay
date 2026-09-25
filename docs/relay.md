@@ -68,3 +68,44 @@ Create an encrypted backup with `node --env-file=/private/relay.env dist/relay/c
 For recovery, stop the exact relay launchd service, preserve its current database/WAL, and use the `restore` command to a **new** database path. Supply the original database encryption key and separate backup key; an incorrect database key fails on startup. The database pins its original chain genesis and group wallet; it refuses startup under a different merchant identity. Point the private env at the restored path, start one relay instance, let it rescan finalized blocks from its saved cursor, inspect order/outbox counts, and rehearse a recovered receipt lookup. Never run two notification workers against the same database. Backup restore may resend previously delivered messages; use order IDs and queue assignments to prevent duplicate shipments. Rehearse restore before accepting real payments.
 
 No live deployment, purchase, notification or refund is performed by the test suite. Launch needs an internal end-to-end paid/refunded rehearsal, current shipping/legal checks, a completed private transport and the existing MOF/Bunny deployment runbook.
+
+## Local customer checkout rehearsal
+
+`deploy/rehearsal-proxy.mjs` provides a customer-only browser route over a **manually established SSH forward**. It runs only when explicitly invoked and loads no relay environment, operator token, wallet key or SSH credential. Build first with Node 26 and the locked Yarn setup from the README. The command without flags prints usage and exits.
+
+Before any enabled rehearsal, block public customer ingress at the approved nginx host and verify that block externally. A null frontend `relayUrl` and CORS do not prevent direct API access. Keep the published frontend configuration unchanged. Enable the private merchant only after notification credentials, backup bindings and the reviewed start block are ready; this local proxy neither changes nor bypasses those launch gates.
+
+For the approved MOF deployment, open a separate terminal and establish the SSH forward using the existing trusted host key and operator authentication. Do not put credentials in the command, disable host-key checks, or expose the forward on other interfaces:
+
+```sh
+ssh -NT -o ExitOnForwardFailure=yes -o StrictHostKeyChecking=yes \
+  -L 127.0.0.1:39850:127.0.0.1:39848 administrator@mof.sora.org
+```
+
+Then run the local proxy from this repository:
+
+```sh
+node deploy/rehearsal-proxy.mjs \
+  --listen-port 39849 \
+  --upstream http://127.0.0.1:39850 \
+  --frontend-origin http://127.0.0.1:41829
+```
+
+All three flags are mandatory. Only literal `http://127.0.0.1:<port>` origins are accepted, with distinct non-default ports; credentials, paths, queries, host aliases and non-loopback addresses are rejected. The browser must use **`http://127.0.0.1:41829`**, not `localhost`. The proxy binds only **127.0.0.1:39849** and requires that exact Host, the configured Origin and a loopback socket peer on every browser request. It does not accept missing or `null` origins. No environment variable changes its endpoints.
+
+In the Polkaswap checkout, use its explicit development-only rehearsal mode:
+
+```sh
+PS_STORE_REHEARSAL_RELAY_URL=http://127.0.0.1:39849 \
+  yarn vite --mode store-rehearsal
+```
+
+The Vite rehearsal server fixes its host/port to `127.0.0.1:41829` and overrides the served development `/community-store.json`. Because normal development selects the testnet environment, this explicit rehearsal mode also answers `/env.dev.json` with the **byte-identical contents of `public/env.json`**. It first requires production network type, the exact SORA mainnet genesis, primary `wss://ws.mof.sora.org`, and node addresses limited to the existing approved `ws.mof.sora.org`/`mof2.sora.org` pair. It accepts the bare environment path or its exact current `?v=` build-version query; other queries fail instead of falling through to testnet. Both overrides require the exact local Host, allow only GET/HEAD, and use no-store responses. No public configuration/environment file or app development flag is changed; ordinary development and normal builds retain their existing behavior.
+
+Rehearsal mode limits Vite dependency discovery to `index.html` so archived HTML snapshots are not scanned as app entrypoints. Visit `http://127.0.0.1:41829/#/store`. This is a desktop loopback setup; a browser on a separate phone cannot use this address. Actual supported wallet/mobile signing remains a separate rehearsal requirement.
+
+The proxy allows only `GET /v1/catalog`, `POST /v1/orders`, `POST /v1/orders/recover-create`, `GET /v1/orders/:uuid`, and customer `transaction`, `payment-attempt` and `payment-attempt/cancel` POST routes. It denies operator/health routes, other methods, query strings, arbitrary URLs, encoded path variants, CONNECT and WebSocket upgrades. Preflight permits only the selected route's method plus Content-Type and Authorization. Recovery authorization is forwarded only for customer order routes and must be the existing 64-hex recovery capability; never enter an operator token in the frontend.
+
+Upstream requests go solely to the fixed SSH forward, with Origin `https://polkaswap.io` and overwritten `X-Sora-Pay-Client-IP: 127.0.0.1` for the approved relay's proxy-trust mode. Incoming cookies, forwarding headers and arbitrary headers are discarded. Upstream cookies, redirects and CORS headers are never passed through. Responses use the exact local browser origin and `Cache-Control: no-store`. There are no request URL/header/body logs, retries or persisted proxy records. POST JSON is limited to 16 KiB; each body/upstream wait has a 15-second deadline and upstream JSON is capped at 1 MiB.
+
+Stopping the proxy with Ctrl-C closes its listener and drains for at most five seconds; stop the separately launched SSH forward as well. A timeout or browser closure may occur after an order or payment attempt reached the relay: use the existing saved idempotency key/receipt recovery and payment-status flow, never assume failure authorizes another transfer. Keep the public ingress block until the internal purchase/notification/fulfillment/refund rehearsal and launch review pass. Operator access remains a separate authenticated private workflow and is never available through this customer proxy.

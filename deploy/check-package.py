@@ -11,7 +11,7 @@ DEPLOY = {f'deploy/{name}' for name in (
     'archive-stage.py', 'check-package.py', 'check-readiness.mjs',
     'merchant.disabled.json.example', 'merchant.polkaswap.json.example',
     'nginx.conf.example', 'org.sora.sora-pay-relay.plist.example',
-    'relay.env.example', 'run-relay.sh', 'runtime.json',
+    'relay.env.example', 'run-relay.sh', 'runtime.json', 'rehearsal-proxy.mjs',
     'stage-relay.mjs', 'staging-utils.mjs',
 )}
 SNAPSHOTS = {'packages/providers/data/japan-post-ems.json', 'packages/providers/data/mufg-usdjpy.json'}
