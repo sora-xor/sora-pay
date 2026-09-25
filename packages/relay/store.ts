@@ -8,7 +8,8 @@ import { decrypt, digest, encrypt, tokenMatches } from './crypto.js';
 import { xorToCodec } from './pricing.js';
 
 export type OrderStatus = 'unpaid' | 'expired' | 'paid' | 'shipping_review' | 'shipped' | 'refund_pending' | 'refunded';
-export interface Address { name: string; line1: string; line2?: string; city: string; region?: string; postalCode: string; country: string }
+/** Postal code may be omitted at checkout; stored orders normalize it to an empty string. */
+export interface Address { name: string; line1: string; line2?: string; city: string; region?: string; postalCode?: string; country: string }
 export interface Contact { type: 'email' | 'telegram'; value: string }
 export interface CreateOrder { productId: string; quantity: number; shippingRateId: string; payer: string; address: Address; contact: Contact; idempotencyKey: string }
 export interface RefundObligation { reference: string; recipient: string; amountCodec: string; status: 'pending' | 'finalized'; receipt?: PaymentReceipt; attempt?: { token: string; submitted: boolean; transactionHash?: string } }
@@ -31,8 +32,9 @@ function validateInput(input: CreateOrder): CreateOrder {
   const address: Record<string, string> = {};
   for (const field of ['name', 'line1', 'line2', 'city', 'region', 'postalCode', 'country'] as const) {
     const value = input.address[field];
+    if (field === 'postalCode' && value === undefined) { address[field] = ''; continue; }
     if (value == null && (field === 'line2' || field === 'region')) continue;
-    if (typeof value !== 'string' || !value.trim() || value.length > 200 || /[\x00-\x1f\x7f]/.test(value)) throw new RelayError(400, 'Invalid delivery address');
+    if (typeof value !== 'string' || (field !== 'postalCode' && !value.trim()) || value.length > 200 || /[\x00-\x1f\x7f]/.test(value)) throw new RelayError(400, 'Invalid delivery address');
     address[field] = value.trim();
   }
   if (!/^[A-Z]{2}$/.test(address.country!)) throw new RelayError(400, 'Invalid destination');

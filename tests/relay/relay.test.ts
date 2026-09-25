@@ -53,6 +53,50 @@ test('shipping validates country and actual quantity weight including one parcel
   } finally { f.cleanup(); }
 });
 
+test('optional postal code normalizes UAE orders and equivalent retries without changing other address fields', () => {
+  const c = config(); c.shipping[0].countries = ['AE']; const f = fixture(c);
+  try {
+    const request = { ...input(), address: { ...input().address, city: 'Dubai', country: 'AE', postalCode: '' } };
+    const saved = f.store.create(request);
+    const { postalCode, ...addressWithoutPostalCode } = request.address;
+    assert.equal(postalCode, '');
+    assert.deepEqual(f.store.create({ ...request, address: addressWithoutPostalCode }), saved);
+    assert.deepEqual(f.store.create({ ...request, address: { ...request.address, postalCode: '   ' } }), saved);
+    assert.equal(f.store.list().length, 1);
+    assert.deepEqual(f.store.operatorOrder(saved.orderId).address, request.address);
+    const provided = f.store.create({ ...request, idempotencyKey: randomUUID(), address: { ...request.address, postalCode: '  420-0000  ' } });
+    assert.equal(f.store.operatorOrder(provided.orderId).address.postalCode, '420-0000');
+    const bounded = f.store.create({ ...request, idempotencyKey: randomUUID(), address: { ...request.address, postalCode: 'a'.repeat(200) } });
+    assert.equal(f.store.operatorOrder(bounded.orderId).address.postalCode.length, 200);
+  } finally { f.cleanup(); }
+});
+
+test('HTTP accepts UAE checkout without postal code but rejects malformed postal values and missing required delivery fields', async () => {
+  const c = config(); c.shipping[0].countries = ['AE']; const f = fixture(c);
+  const server = createRelayServer(f.store, { operatorToken: 'o'.repeat(64), ready: () => true, trustLoopbackProxy: true });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve)); const base = `http://127.0.0.1:${server.address().port}`;
+  const request = { ...input(), address: { ...input().address, city: 'Dubai', country: 'AE', postalCode: '' } };
+  const post = (value) => fetch(base + '/v1/orders', { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'https://polkaswap.io', 'X-Sora-Pay-Client-IP': '127.0.0.1' }, body: JSON.stringify(value) });
+  try {
+    const response = await post(request); assert.equal(response.status, 201); const saved = await response.json();
+    assert.equal(saved.status, 'awaiting_payment'); assert.equal(f.store.operatorOrder(saved.orderId).address.postalCode, '');
+    const omitted = await post({ ...request, address: { ...request.address, postalCode: undefined } });
+    assert.equal(omitted.status, 201); assert.deepEqual(await omitted.json(), saved);
+    for (const postalCode of [null, 123, false, {}, [], 'a'.repeat(201), 'bad\npostal', 'bad\tpostal', 'bad\u0000postal', 'bad\u007fpostal']) {
+      const rejected = await post({ ...request, idempotencyKey: randomUUID(), address: { ...request.address, postalCode } });
+      assert.equal(rejected.status, 400); assert.deepEqual(await rejected.json(), { error: 'Invalid delivery address' });
+    }
+    for (const field of ['name', 'line1', 'city', 'country']) {
+      for (const value of [undefined, '', '   ']) {
+        const rejected = await post({ ...request, idempotencyKey: randomUUID(), address: { ...request.address, [field]: value } });
+        assert.equal(rejected.status, 400); assert.deepEqual(await rejected.json(), { error: 'Invalid delivery address' });
+      }
+    }
+    assert.equal(f.store.list().length, 1);
+    assert.equal(JSON.stringify(saved).includes(request.address.line1), false);
+  } finally { await new Promise((resolve) => server.close(resolve)); f.cleanup(); }
+});
+
 test('stocked merchants atomically reserve and expire; on-demand merchants do not cap orders', () => {
   const c = config(); c.fulfillmentMode = 'stocked'; c.product.stock = 1; const f = fixture(c);
   try { const first = f.store.create(input()); assert.throws(() => f.store.create(input())); f.tick(30 * 60_000 + 1); assert.equal(f.store.get(first.orderId, first.recoveryToken).status, 'expired'); assert.doesNotThrow(() => f.store.create(input())); } finally { f.cleanup(); }
