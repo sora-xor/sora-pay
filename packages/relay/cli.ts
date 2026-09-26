@@ -1,13 +1,8 @@
 import { mkdirSync, chmodSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { loadConfig } from './config.js';
-import { OrderStore } from './store.js';
-import { createRelayServer } from './server.js';
-import { ArchiveRequiredError, connectChain, scanFinalized, type ChainReader } from './chain.js';
-import { deliverNext, emailDelivery, telegramDelivery, type NotificationDelivery } from './notifications.js';
-import { createCatalogRefresher } from './catalog-refresh.js';
+import type { ChainReader } from './chain.js';
+import type { NotificationDelivery } from './notifications.js';
 import { encryptedBackup, restoreBackup } from './backup.js';
-import { awaitWithAbort, createRelayLifecycle } from './lifecycle.js';
 
 /** Load secrets exclusively from the service environment, without logging their values. */
 function secret(name: string): string { const value = process.env[name]; if (!value) throw new Error(`Missing ${name}`); return value; }
@@ -18,11 +13,16 @@ async function main(): Promise<void> {
   process.umask(0o077);
   const command = process.argv[2] ?? 'serve';
   if (command === 'restore') { await restoreBackup(secret('SORA_PAY_BACKUP_PATH'), secret('SORA_PAY_DB'), key('SORA_PAY_BACKUP_KEY')); return; }
+  const [{ loadConfig }, { OrderStore }] = await Promise.all([import('./config.js'), import('./store.js')]);
   const config = loadConfig(secret('SORA_PAY_CONFIG'));
   const dbPath = secret('SORA_PAY_DB'); mkdirSync(dirname(dbPath), { recursive: true, mode: 0o700 }); chmodSync(dirname(dbPath), 0o700);
   const store = new OrderStore(dbPath, config, key('SORA_PAY_ENCRYPTION_KEY'));
   if (command === 'backup') { try { await encryptedBackup(store, secret('SORA_PAY_BACKUP_PATH'), key('SORA_PAY_BACKUP_KEY')); } finally { store.close(); } return; }
   if (command !== 'serve') throw new Error('Unknown command');
+  // Backup and restore must not initialize RPC, HTTP, provider or notification dependencies.
+  const [{ createRelayServer }, { ArchiveRequiredError, connectChain, scanFinalized }, { deliverNext, emailDelivery, telegramDelivery }, { createCatalogRefresher }, { awaitWithAbort, createRelayLifecycle }] = await Promise.all([
+    import('./server.js'), import('./chain.js'), import('./notifications.js'), import('./catalog-refresh.js'), import('./lifecycle.js'),
+  ]);
   const catalog = createCatalogRefresher(config);
   let lastReconciledAt = 0;
   let ready = false; let chain: ChainReader | undefined; let delivery: NotificationDelivery | undefined; let stopping = false;

@@ -2,6 +2,10 @@
 
 Native SORA XOR payments for static websites. Sora Pay contains an exact-arithmetic TypeScript core, a dependency-free browser widget, and a private merchant relay. It is Apache-2.0 licensed. The relay verifies finalized chain events and delivers private fulfillment messages; it never holds wallet spending keys.
 
+## Unreleased
+
+The restore command loads only its local backup dependencies. RPC, HTTP, catalog and notification modules are loaded only when serving the relay, reducing restore startup work without changing encryption, key validation or overwrite protection.
+
 ## 0.1.1
 
 The checkout widget now explains when the wallet lacks enough native XOR for the payment and network fee. Hosts can translate this message with the new `insufficientBalance` message key. Unknown wallet errors still use the generic message, and an uncertain submission still requires checking payment status before another attempt.
