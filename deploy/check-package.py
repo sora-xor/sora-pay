@@ -6,7 +6,7 @@ import sys
 import tarfile
 
 ROOT_FILES = {'LICENSE', 'README.md', 'package.json'}
-DOCS = {'docs/relay.md', 'docs/providers.md', 'docs/staging.md'}
+DOCS = {'docs/relay.md', 'docs/providers.md', 'docs/staging.md', 'docs/mof-capacity-policy.md'}
 DEPLOY = {f'deploy/{name}' for name in (
     'archive-stage.py', 'check-package.py', 'check-readiness.mjs',
     'merchant.disabled.json.example', 'merchant.polkaswap.json.example',

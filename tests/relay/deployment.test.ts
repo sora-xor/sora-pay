@@ -36,6 +36,32 @@ test('staging checksums reject changed runtime bytes before creating an output t
  }finally{t.cleanup();}
 });
 
+test('staging includes the public capacity policy and manifests it without copying internal documentation',async()=>{
+ const t=temporary();try {
+  const sourceRoot=join(t.directory,'source');const output=join(t.directory,'output');
+  for(const path of ['dist/relay','node_modules/@polkadot/api','deploy','docs']) mkdirSync(join(sourceRoot,path),{recursive:true});
+  for(const [path,content] of Object.entries({
+   'package.json':JSON.stringify({name:'@sora/sora-pay',version:'0.1.1'}),
+   'yarn.lock':'synthetic lockfile','LICENSE':'synthetic license','dist/relay/cli.js':'// synthetic CLI',
+   'node_modules/@polkadot/api/package.json':'{}','deploy/merchant.polkaswap.json.example':'{"enabled":false}',
+   'deploy/relay.env.example':'# synthetic environment','deploy/org.sora.sora-pay-relay.plist.example':'synthetic plist',
+   'deploy/run-relay.sh':'#!/bin/sh\nexit 0\n','docs/mof-readiness-internal.md':'internal fixture: do not stage',
+  })) writeFileSync(join(sourceRoot,path),content);
+  for(const name of ['relay.md','providers.md','staging.md','mof-capacity-policy.md']) {
+   writeFileSync(join(sourceRoot,'docs',name),readFileSync(new URL(`../../docs/${name}`,import.meta.url)));
+  }
+  const runtimeRoot=join(t.directory,'runtime');mkdirSync(join(runtimeRoot,'test-node/bin'),{recursive:true});
+  writeFileSync(join(runtimeRoot,'test-node/bin/node'),'synthetic runtime, never executed');
+  const archive=join(t.directory,'node.tar.xz');execFileSync('tar',['-cJf',archive,'-C',runtimeRoot,'test-node']);
+  writeFileSync(join(sourceRoot,'deploy/runtime.json'),JSON.stringify({version:'test',directory:'test-node',sha256:await fileSha256(archive)}));
+  const result=await stageRelay({sourceRoot,output,runtimeArchive:archive,installationRoot:'/synthetic/sora-pay'});
+  assert.equal(readFileSync(join(output,'docs/mof-capacity-policy.md'),'utf8'),readFileSync(join(sourceRoot,'docs/mof-capacity-policy.md'),'utf8'));
+  const {manifest}=await verifyManifest(output,result.manifestSha256);
+  assert.ok(manifest.files.some((file:{path:string})=>file.path==='docs/mof-capacity-policy.md'));
+  assert.equal(existsSync(join(output,'docs/mof-readiness-internal.md')),false);
+ }finally{t.cleanup();}
+});
+
 test('deterministic staging inventory verifies bytes and refuses escaping symlinks',async()=>{
  const t=temporary();try {
   mkdirSync(join(t.directory,'bin'));writeFileSync(join(t.directory,'bin/node'),'test runtime',{mode:0o755});symlinkSync('node',join(t.directory,'bin/node-link'));

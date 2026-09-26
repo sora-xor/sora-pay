@@ -27,7 +27,7 @@ export async function stageRelay({ sourceRoot = sourceDefault, output, runtimeAr
       await cp(join(sourceRoot, path), join(temporary, path), { recursive: true, verbatimSymlinks: true, filter: (path) => !path.includes('/node_modules/.cache/') });
     }
     await mkdir(join(temporary, 'docs'));
-    for (const path of ['relay.md', 'providers.md', 'staging.md']) await cp(join(sourceRoot, 'docs', path), join(temporary, 'docs', path));
+    for (const path of ['relay.md', 'providers.md', 'staging.md', 'mof-capacity-policy.md']) await cp(join(sourceRoot, 'docs', path), join(temporary, 'docs', path));
     await mkdir(join(temporary, 'private'), { mode: 0o700 });
     await writeFile(join(temporary, 'private/merchant.json'), JSON.stringify(merchant, null, 2) + '\n', { mode: 0o600 });
     const environment = (await readFile(join(sourceRoot, 'deploy/relay.env.example'), 'utf8')).replaceAll('/Users/administrator/apps/sora-pay', installationRoot);

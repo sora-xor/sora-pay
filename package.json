@@ -43,7 +43,8 @@
     "./deploy",
     "./docs/relay.md",
     "./docs/providers.md",
-    "./docs/staging.md"
+    "./docs/staging.md",
+    "./docs/mof-capacity-policy.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
