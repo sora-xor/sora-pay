@@ -47,6 +47,63 @@ Address `name`, `line1`, `city` and two-letter uppercase `country` remain requir
 
 The front end pins chain/native asset/group wallet and separately validates a quote before opening a wallet prompt. Persist the recovery capability in session storage, permit downloading a receipt, and use a URL fragment only if a recovery link is needed. Never attach recovery data to query strings. Payment references are random and public; no customer data belongs in the transfer comment.
 
+## Closing new orders while preserving recovery
+
+The [MOF storage policy](mof-capacity-policy.md) requires a manual pause below its operating threshold. The reusable nginx artifacts in [`deploy/nginx`](../deploy/nginx/) provide that scoped control for a **future public pilot**. They have no automatic storage monitor and do not change the current catalog-only public gate. Installing the pilot server template, even with admission paused, exposes the saved-order recovery API and therefore requires a separately reviewed ingress deployment after its tests pass. The existing frozen Sora Pay 0.2.0 archive is unchanged; pin these later operator assets by their reviewed Git revision and checksums.
+
+The pilot uses one shared server/guard configuration and swaps only the admission map:
+
+| Artifact | Installation role |
+| --- | --- |
+| `sora-pay-pilot-http.conf.example` | Include once in nginx's `http` context; supplies the public rate-limit zone and the exact active-map include. |
+| `sora-pay-pilot-server.conf.example` | Include only inside the approved `mof.sora.org` HTTPS server alongside its existing IPFS configuration. Requires nginx 1.29.3 or newer. |
+| `sora-pay-admission-guard.conf` | Install at `/opt/homebrew/etc/nginx/snippets/sora-pay-admission-guard.conf`; the customer proxy location includes it. |
+| `sora-pay-admission-open.map.conf` | Reviewed map bytes for allowing new requests when all launch and storage admission checks pass. |
+| `sora-pay-admission-paused.map.conf` | Reviewed map bytes for returning `503` to new order creation and signing-lease requests only. |
+
+Install exactly one selected map at `/opt/homebrew/etc/nginx/snippets/sora-pay-admission-map.conf`. There is deliberately no optional include, wildcard include or fallback variable initialization: an absent map/file or undefined guard variable must fail `nginx -t`. The [nginx map module](https://nginx.org/en/docs/http/ngx_http_map_module.html) operates in `http` context; these maps use quoted, anchored, case-sensitive regex keys because literal map keys match without case sensitivity. The guard uses only [`return` inside `if`](https://nginx.org/en/docs/http/ngx_http_rewrite_module.html#if).
+
+The keys use `$request_method:$uri`. Nginx's [`$uri`](https://nginx.org/en/docs/http/ngx_http_core_module.html#var_uri) is the normalized path without the query string, and [`proxy_pass` with a URI](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_pass) replaces the matched `/sora-pay/v1/` prefix with `/v1/` while preserving the endpoint suffix. The shared guard rejects normalized paths containing a backslash with `400` in both modes: Node's URL parser treats backslashes as separators, so forwarding them could bypass nginx's route or operator checks. The relay rejects query parameters independently. Do not replace `$uri` with raw `$request_uri`, use a case-insensitive pattern, broaden the pattern to all `POST`s, remove the ambiguous-path check, or strip the endpoint suffix.
+
+| Public request | Paused behavior |
+| --- | --- |
+| `POST /sora-pay/v1/orders` | `503` before proxying a new order. |
+| `POST /sora-pay/v1/orders/:id/payment-attempt` | `503` before granting a new signing lease; ID shape matches the relay's `[a-f0-9-]{36}` route. |
+| `GET /sora-pay/v1/catalog` | Forward unchanged. Browsing remains available. |
+| `POST /sora-pay/v1/orders/recover-create` and `GET /sora-pay/v1/orders/:id` | Forward unchanged, retaining private capability/authentication checks. |
+| `POST /sora-pay/v1/orders/:id/transaction` and `POST /sora-pay/v1/orders/:id/payment-attempt/cancel` | Forward unchanged for payment recovery or explicit pre-broadcast wallet rejection. |
+| `OPTIONS` customer requests | Forward for the relay's exact-origin CORS handling. |
+| `/sora-pay/v1/operator` and its descendants | Remain denied publicly with `403`. Use the separately authenticated private operator path. |
+
+The catalog may still report enabled while this ingress pause is active, so an already-open page can display a quote. Saving a new order or acquiring a new lease fails; there is no dedicated low-storage banner. Nginx does not emit or reflect CORS headers itself, so a cross-origin browser may show a generic connection/save error for its `503`. Do not add wildcard or reflected CORS to conceal that limitation.
+
+A pause affects new requests, not leases already issued, wallet prompts already opened, or signed/broadcast transactions. Those payments can still complete. Never cancel an uncertain lease, repeat a transfer, or advance the scan cursor because ingress was paused. Keep the relay, scanner and outbox running and preserve existing recovery and transaction hints. Manual transfers to the public wallet also remain possible and require reconciliation.
+
+Before first installation, run the offline tests and then the isolated real-nginx verifier against the same approved nginx binary/version that serves the host:
+
+```sh
+node --test tests/relay/admission-ingress.test.ts tests/relay/admission-recovery.test.ts tests/relay/admission-verifier.test.ts
+python3 deploy/check-admission-ingress.py --nginx /opt/homebrew/bin/nginx
+```
+
+The verifier uses a temporary prefix, ephemeral loopback listeners and a synthetic upstream; it checks missing-map syntax failure, actual URI routing, open → paused → open reloads, recovery suffixes, operator denial, no-store and proxy-header behavior. It does not use the merchant, real orders, credentials, live nginx configuration or production listeners. It cleans up only its own processes. A no-argument invocation reports its plan without starting a process. Test results establish the checked version/configuration behavior, not a production pause or a completed store launch.
+
+On 26 September 2026, the isolated verifier passed **48 requests** through open → paused → open on the approved MOF host using **nginx 1.31.1**. It verified the missing-map refusal, normalized routes and backslash rejection, preserved recovery, public operator denial, exact no-store responses under deliberately conflicting parent cache/CSP headers, trusted client-IP handling and complete test-process cleanup. The verifier hash was `ce4b5407d55eb23f17c0cc0d95b46307317db90eb3644ebbb570fad5dfb3f22f`; the server template hash was `59e65b5a3d9dad1ac67a145273dd92ec39581a19e465fd6d488aec3dbe8f0ec3`. Existing production configuration, service identities and the catalog-only gate were unchanged. Strict compilation and all **160 offline tests** passed. These operator assets are prepared and tested, not installed into public ingress; the frozen 0.2.0 frontend archive remains unchanged.
+
+For a reviewed pilot installation, preserve the existing server configuration and verify that RPC, IPFS, root service routes and public operator denial are unchanged. Confirm the Node listener remains loopback-only, trusted-proxy mode is explicitly configured, and nginx overwrites `X-Sora-Pay-Client-IP` with `$remote_addr` while clearing forwarded client-IP headers. Keep access/error request logging disabled, `no-store`, 16 KiB request limits, rate limits, timeouts and disabled proxy cache/retries/buffering intact. The application still owns exact-origin CORS and bearer authentication. Do not expose `/healthz` or an operator route through this customer location.
+
+The customer proxy location explicitly uses [`add_header_inherit on`](https://nginx.org/en/docs/http/ngx_http_headers_module.html#add_header_inherit) with its own `Cache-Control: no-store` header. Standard inheritance lets the nested return-only guards retain that local header on `400` and `503`, while the location's own header definitions replace parent-server headers. Setting this location to `off` also disables inheritance inside the guards and drops `no-store` from their responses. The other five locations retain `add_header_inherit off`. Verify both guard responses and the absence of inherited parent cache/CSP headers in the isolated nginx test.
+
+To pause an installed pilot:
+
+1. Record aggregate free space, relay health, scan cursor, notification backlog and backup status. Confirm the active nginx master command/owner/config path and the reviewed server, guard and current map hashes. Do not inspect or log customer payloads or bearer tokens.
+2. Preserve the previous map with its hash and permissions. Stage the reviewed **paused** bytes as a regular temporary file in the same snippets directory, with the same owner/mode, then atomically rename it over the exact active-map path. Change no merchant settings, database, runtime or other service's configuration.
+3. Test the complete active nginx configuration with the verified binary and `nginx -t`. If validation fails, restore the prior on-disk map and validate again without reloading. Running workers still use their previously loaded mode, so a failed pause is an unresolved incident; do not report admission closed.
+4. Gracefully reload only the verified nginx master through its established service procedure. Confirm reload success and test fresh connections: harmless synthetic invalid create and lease requests must return `503` from nginx; catalog/recovery/hint/cancel paths must still reach the relay; public operator variants must remain `403`. Verify no-store headers and unchanged RPC/IPFS/root routes. Use synthetic invalid capabilities or controlled fixtures; never create a real order or send a payment as a probe. A reload or probe failure does not prove closure; keep the incident open and check which mode is active.
+5. Continue scanner/outbox and backup checks while the responsible service owner restores capacity. Existing workers may finish in-flight requests during reload; reconcile all already-issued leases and submitted transactions. Do not restore an older database, rewind or skip the cursor, or stop reconciliation to simulate a successful pause.
+
+Reopen by the same reviewed map replacement, syntax-check, reload and fresh-connection checks using the **open** map only after the storage admission reserve, reconciliation and current verified backup requirements pass. Check that a synthetic invalid new-order request reaches relay validation rather than nginx `503`; this does not require a real order. When a pause is required, never automatically revert to open merely because the reload/probe failed. The preserved map is configuration recovery evidence, not authorization to resume admission.
+
 ## Volunteer operations
 
 Use a trusted operator client or CLI that passes `Authorization` from the private environment; do not put tokens in shell arguments/history. Requests below require the operator token and VPN access. The shared token authorizes the trusted volunteer team; `owner` is an operational assignment identifier, not a separate authenticated security principal.

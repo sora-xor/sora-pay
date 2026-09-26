@@ -8,11 +8,14 @@ import tarfile
 ROOT_FILES = {'LICENSE', 'README.md', 'package.json'}
 DOCS = {'docs/relay.md', 'docs/providers.md', 'docs/staging.md', 'docs/mof-capacity-policy.md'}
 DEPLOY = {f'deploy/{name}' for name in (
-    'archive-stage.py', 'check-package.py', 'check-readiness.mjs',
+    'archive-stage.py', 'check-package.py', 'check-readiness.mjs', 'check-admission-ingress.py',
     'merchant.disabled.json.example', 'merchant.polkaswap.json.example',
     'nginx.conf.example', 'org.sora.sora-pay-relay.plist.example',
     'relay.env.example', 'run-relay.sh', 'runtime.json', 'rehearsal-proxy.mjs',
     'stage-relay.mjs', 'staging-utils.mjs',
+    'nginx/sora-pay-admission-open.map.conf', 'nginx/sora-pay-admission-paused.map.conf',
+    'nginx/sora-pay-admission-guard.conf', 'nginx/sora-pay-pilot-http.conf.example',
+    'nginx/sora-pay-pilot-server.conf.example',
 )}
 SNAPSHOTS = {'packages/providers/data/japan-post-ems.json', 'packages/providers/data/mufg-usdjpy.json'}
 EXAMPLES = {'examples/basic/index.html', 'examples/polkaswap/README.md'}
