@@ -8,7 +8,7 @@ export interface WidgetMessages {
   title: string; merchant: string; amount: string; recipient: string; payer: string; chain: string;
   reference: string; expires: string; fee: string; prepare: string; pay: string; check: string;
   idle: string; estimating: string; ready: string; signing: string; submitted: string;
-  uncertain: string; finalized: string; error: string; feeChanged: string;
+  uncertain: string; finalized: string; error: string; feeChanged: string; insufficientBalance: string;
 }
 
 /** English defaults for standalone installations; Polkaswap supplies its locale catalog. */
@@ -21,6 +21,7 @@ export const DEFAULT_MESSAGES: WidgetMessages = {
   uncertain: 'Payment status is uncertain. Check the saved order before taking any further payment action.',
   finalized: 'Payment verified in a finalized block.', error: 'Payment unavailable. Check your wallet, network, balance and quote expiry.',
   feeChanged: 'The network fee changed. Review it and press Send XOR again.',
+  insufficientBalance: 'Not enough native XOR in this wallet to cover the payment and network fee.',
 };
 
 /** Widget options keep private customer records outside the reusable payment component. */
@@ -99,7 +100,10 @@ export function defineSoraPayElement(tagName = 'sora-pay'): void {
       }
       section.append(details);
       const status = document.createElement('p'); status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
-      status.textContent = snapshot.errorCode === 'fee_changed' ? messages.feeChanged : messages[snapshot.state]; section.append(status);
+      status.textContent = snapshot.state === 'error' && snapshot.errorCode === 'insufficient_balance'
+        ? messages.insufficientBalance
+        : snapshot.errorCode === 'fee_changed' ? messages.feeChanged : messages[snapshot.state];
+      section.append(status);
       const button = document.createElement('button'); button.type = 'button';
       if (snapshot.state === 'ready') { button.textContent = messages.pay; button.onclick = () => { void this.controller?.pay(); }; }
       else if (snapshot.state === 'submitted' || snapshot.state === 'uncertain') { button.textContent = messages.check; button.disabled = !this.options.reconcile; button.onclick = () => { void this.controller?.reconcile(); }; }

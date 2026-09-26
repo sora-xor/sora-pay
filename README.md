@@ -2,6 +2,10 @@
 
 Native SORA XOR payments for static websites. Sora Pay contains an exact-arithmetic TypeScript core, a dependency-free browser widget, and a private merchant relay. It is Apache-2.0 licensed. The relay verifies finalized chain events and delivers private fulfillment messages; it never holds wallet spending keys.
 
+## 0.1.1
+
+The checkout widget now explains when the wallet lacks enough native XOR for the payment and network fee. Hosts can translate this message with the new `insufficientBalance` message key. Unknown wallet errors still use the generic message, and an uncertain submission still requires checking payment status before another attempt.
+
 ## Develop and package
 
 Use Node 26 and the repository-pinned Yarn 4.10.3. Node 26 does not bundle Corepack. If `corepack` is unavailable, install it once following the [official Corepack instructions](https://github.com/nodejs/corepack#manual-installs):
@@ -17,13 +21,13 @@ corepack yarn --version # Must print 4.10.3.
 corepack yarn install --immutable
 corepack yarn build
 corepack yarn test
-corepack yarn pack --out sora-pay-0.1.0.tgz
-corepack yarn check:package sora-pay-0.1.0.tgz
+corepack yarn pack --out sora-pay-0.1.1.tgz
+corepack yarn check:package sora-pay-0.1.1.tgz
 ```
 
 The package check uses Python 3's standard library, validates the public file allowlist and required provider snapshots, and preserves the root Apache license. It rejects private files, internal reports, and nested staging README/license files. Run it before copying or publishing an archive.
 
-`@sora/sora-pay/core` and `@sora/sora-pay/widget` are browser ESM exports. `@sora/sora-pay/relay` and `@sora/sora-pay/providers` are Node-only. The package contains compiled JavaScript/declarations, source, provider snapshots, deployment templates, documentation, examples and the license. Published consumers should pin `0.1.0`, or vendor the generated versioned archive with a recorded checksum. Never use a sibling-directory dependency in an IPFS production build. The core and widget have no runtime imports outside this package; a static server can serve their compiled ESM files directly.
+`@sora/sora-pay/core` and `@sora/sora-pay/widget` are browser ESM exports. `@sora/sora-pay/relay` and `@sora/sora-pay/providers` are Node-only. The package contains compiled JavaScript/declarations, source, provider snapshots, deployment templates, documentation, examples and the license. Published consumers should pin `0.1.1`, or vendor the generated versioned archive with a recorded checksum. Never use a sibling-directory dependency in an IPFS production build. The core and widget have no runtime imports outside this package; a static server can serve their compiled ESM files directly.
 
 Run a static server from the repository root and open `examples/basic/index.html` to try the explicitly labeled offline demonstration. Its mock adapter never connects a wallet or transfers funds. HTTPS or localhost is required for the widget's Web Locks submission guard.
 
