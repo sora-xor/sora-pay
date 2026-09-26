@@ -2,8 +2,8 @@ import { DatabaseSync } from 'node:sqlite';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { chmodSync } from 'node:fs';
 import type { PaymentRequest, PaymentReceipt, FinalizedTransferEvidence } from '../core/index.js';
-import { verifyFinalizedPayment, validatePaymentRequest } from '../core/index.js';
-import { accountAddress, merchantPrice, type MerchantConfig } from './config.js';
+import { codecAmount, verifyFinalizedPayment, validatePaymentRequest } from '../core/index.js';
+import { accountAddress, merchantPrice, resolveRefundPolicy, type MerchantConfig, type RefundPolicy } from './config.js';
 import { decrypt, digest, encrypt, tokenMatches } from './crypto.js';
 import { xorToCodec } from './pricing.js';
 
@@ -12,16 +12,25 @@ export type OrderStatus = 'unpaid' | 'expired' | 'paid' | 'shipping_review' | 's
 export interface Address { name: string; line1: string; line2?: string; city: string; region?: string; postalCode?: string; country: string }
 export interface Contact { type: 'email' | 'telegram'; value: string }
 export interface CreateOrder { productId: string; quantity: number; shippingRateId: string; payer: string; address: Address; contact: Contact; idempotencyKey: string }
-export interface RefundObligation { reference: string; recipient: string; amountCodec: string; status: 'pending' | 'finalized'; receipt?: PaymentReceipt; attempt?: { token: string; submitted: boolean; transactionHash?: string } }
+/** Trusted chain quote for one exact refund call, never a browser-provided fee assertion. */
+export interface RefundFeeQuote { amountCodec: string; feeCodec: string; blockHash: string; blockNumber: string; expiresAt: string }
+export interface RefundObligation {
+  reference: string; recipient: string; grossAmountCodec: string; amountCodec?: string; feeExempt: boolean;
+  feeQuote?: RefundFeeQuote; actualFeeCodec?: string; deductedFeeCodec?: string; feeCorrectionCodec?: string;
+  status: 'pending' | 'finalized'; receipt?: PaymentReceipt; attempt?: { token: string; submitted: boolean; transactionHash?: string };
+}
 interface PrivateOrder {
   input: CreateOrder; paymentRequest: PaymentRequest; recoveryToken: string; receivedCodec: string; refundedCodec: string;
+  refundPolicySnapshot?: RefundPolicy; refundFeesCodec?: string; refundFeeCorrectionCodec?: string;
   completedAt?: number;
   pricingSnapshot?: MerchantConfig['pricing']; shippingSnapshot?: MerchantConfig['shipping'][number]; fulfilledCodec?: string;
   receipt?: PaymentReceipt; tracking?: string; reviewReason?: string; refund?: RefundObligation;
+  /** Prior finalized quotes remain available for audit after a make-good or additional refund. */
+  refundHistory?: RefundObligation[];
   attempt?: { token: string; submitted: boolean }; transactionHint?: string;
 }
 interface Row { id: string; public_reference: string; token_hash: string; idem_hash: string; fingerprint: string; data: string; status: OrderStatus; quantity: number; reserved: number; expires: number; created: number; updated: number; owner: string | null; notification: string }
-export interface OrderView { orderId: string; paymentRequest: PaymentRequest; status: Exclude<OrderStatus, 'unpaid'> | 'awaiting_payment'; notificationStatus: string; paymentPending: boolean; receipt?: PaymentReceipt; tracking?: string; refund?: RefundObligation; reviewReason?: string }
+export interface OrderView { orderId: string; paymentRequest: PaymentRequest; refundPolicy: RefundPolicy; refundFeeCorrectionCodec: string; status: Exclude<OrderStatus, 'unpaid'> | 'awaiting_payment'; notificationStatus: string; paymentPending: boolean; receipt?: PaymentReceipt; tracking?: string; refund?: RefundObligation; reviewReason?: string }
 export class RelayError extends Error { constructor(public status: number, message: string) { super(message); } }
 
 /** Validate private checkout input without ever reflecting rejected PII into errors. */
@@ -76,7 +85,15 @@ export class OrderStore {
   close(): void { this.db.close(); }
   private atomic<T>(action: () => T): T { this.db.exec('BEGIN IMMEDIATE'); try { const result = action(); this.db.exec('COMMIT'); return result; } catch (error) { this.db.exec('ROLLBACK'); throw error; } }
   private row(id: string): Row { const row = this.db.prepare('SELECT * FROM orders WHERE id=?').get(id) as unknown as Row | undefined; if (!row) throw new RelayError(404, 'Order not found'); return row; }
-  private decode(row: Row): PrivateOrder { return decrypt(row.data, this.key, row.id); }
+  private decode(row: Row): PrivateOrder {
+    const data = decrypt<PrivateOrder>(row.data, this.key, row.id);
+    // Historical obligations predate fee deductions and remain full, even after a policy change.
+    if (data.refund && data.refund.grossAmountCodec === undefined) {
+      data.refund.grossAmountCodec = data.refund.amountCodec!; data.refund.feeExempt = true;
+    }
+    return data;
+  }
+  private outstanding(data: PrivateOrder): bigint { return BigInt(data.receivedCodec) - BigInt(data.refundedCodec) - BigInt(data.refundFeesCodec ?? '0') - BigInt(data.fulfilledCodec ?? '0'); }
   private save(row: Row, data: PrivateOrder): void { this.db.prepare('UPDATE orders SET data=?,status=?,reserved=?,updated=?,owner=?,notification=? WHERE id=?').run(encrypt(data, this.key, row.id), row.status, row.reserved, this.now(), row.owner, row.notification, row.id); }
   private enqueue(row: Row, kind: string): void { this.db.prepare('INSERT INTO outbox(id,order_id,kind,next_attempt) VALUES(?,?,?,?)').run(randomUUID(), row.id, kind, this.now()); row.notification = 'pending'; }
   private expire(): void { this.db.prepare("UPDATE orders SET status='expired',reserved=0,updated=expires WHERE status='unpaid' AND expires<=?").run(this.now()); }
@@ -85,7 +102,7 @@ export class OrderStore {
     this.expire();
     if (!this.config.enabled) return { enabled: false, version: this.config.version ?? 'unconfigured' };
     const c = this.config;
-    return { enabled: true, version: c.version, merchant: c.merchant, pricing: c.pricing.kind === 'exact-xor' ? { kind: 'exact-xor', version: c.pricing.version } : c.pricing, sourceMetadata: c.pricing.kind === 'exact-xor' ? (c.sourceMetadata?.shipping ? { shipping: c.sourceMetadata.shipping } : undefined) : c.sourceMetadata, product: { id: c.product.id, name: c.product.name, grams: c.product.grams, packedGrams: c.product.packedGrams, packagingGrams: c.product.packagingGrams ?? 0, fulfillmentMode: c.fulfillmentMode ?? 'stocked', priceXor: merchantPrice(c, c.product), stockAvailable: this.available() }, shipping: c.shipping.filter((rate) => rate.countries.some((country) => !c.blockedCountries?.includes(country))).map((rate) => ({ id: rate.id, label: rate.label, maxGrams: rate.maxGrams, reviewedAt: rate.reviewedAt, countries: rate.countries.filter((country) => !c.blockedCountries?.includes(country)), priceXor: merchantPrice(c, rate, true) })), chain: { genesisHash: c.chain.genesisHash, assetId: c.chain.assetId, decimals: c.chain.decimals, denomination: c.chain.denomination, recipient: c.chain.recipient } };
+    return { enabled: true, version: c.version, merchant: c.merchant, refundPolicy: resolveRefundPolicy(c.refundPolicy), pricing: c.pricing.kind === 'exact-xor' ? { kind: 'exact-xor', version: c.pricing.version } : c.pricing, sourceMetadata: c.pricing.kind === 'exact-xor' ? (c.sourceMetadata?.shipping ? { shipping: c.sourceMetadata.shipping } : undefined) : c.sourceMetadata, product: { id: c.product.id, name: c.product.name, grams: c.product.grams, packedGrams: c.product.packedGrams, packagingGrams: c.product.packagingGrams ?? 0, fulfillmentMode: c.fulfillmentMode ?? 'stocked', priceXor: merchantPrice(c, c.product), stockAvailable: this.available() }, shipping: c.shipping.filter((rate) => rate.countries.some((country) => !c.blockedCountries?.includes(country))).map((rate) => ({ id: rate.id, label: rate.label, maxGrams: rate.maxGrams, reviewedAt: rate.reviewedAt, countries: rate.countries.filter((country) => !c.blockedCountries?.includes(country)), priceXor: merchantPrice(c, rate, true) })), chain: { genesisHash: c.chain.genesisHash, assetId: c.chain.assetId, decimals: c.chain.decimals, denomination: c.chain.denomination, recipient: c.chain.recipient } };
   }
   private available(): number | null { if (this.config.fulfillmentMode === 'on-demand') return null; const row = this.db.prepare('SELECT COALESCE(SUM(quantity),0) AS total FROM orders WHERE reserved=1').get() as { total: number }; return Math.max(0, this.config.product.stock! - row.total); }
   /** Save the private order before returning any signable payment request. */
@@ -109,7 +126,7 @@ export class OrderStore {
       const id = randomUUID(); const token = randomBytes(32).toString('hex'); const expires = this.now() + 30 * 60_000;
       const request: PaymentRequest = { version: 1, merchant: { id: c.merchant.id, name: c.merchant.name }, chainGenesisHash: c.chain.genesisHash, assetId: c.chain.assetId, recipient: c.chain.recipient, payer: input.payer, amountCodec: (price * BigInt(input.quantity) + shipping).toString(), decimals: c.chain.decimals, denomination: c.chain.denomination, reference: `sp_${randomBytes(16).toString('hex')}`, expiresAt: new Date(expires).toISOString() };
       validatePaymentRequest(request);
-      const data: PrivateOrder = { input, paymentRequest: request, recoveryToken: token, receivedCodec: '0', refundedCodec: '0', pricingSnapshot: structuredClone(c.pricing), shippingSnapshot: structuredClone(rate) };
+      const data: PrivateOrder = { input, paymentRequest: request, recoveryToken: token, receivedCodec: '0', refundedCodec: '0', refundPolicySnapshot: resolveRefundPolicy(c.refundPolicy), pricingSnapshot: structuredClone(c.pricing), shippingSnapshot: structuredClone(rate) };
       this.db.prepare('INSERT INTO orders VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)').run(id, request.reference, digest(token), digest(input.idempotencyKey), fingerprint, encrypt(data, this.key, id), 'unpaid', input.quantity, 1, expires, this.now(), this.now(), null, 'not_ready');
       return { ...this.view(this.row(id), data), recoveryToken: token };
     });
@@ -122,7 +139,11 @@ export class OrderStore {
     if (!row) throw new RelayError(404, 'Order not found');
     const data = this.decode(row); return { ...this.view(row, data), recoveryToken: data.recoveryToken };
   }
-  private view(row: Row, data: PrivateOrder): OrderView { return { orderId: row.id, paymentRequest: data.paymentRequest, status: row.status === 'unpaid' ? 'awaiting_payment' : row.status, notificationStatus: row.notification, paymentPending: Boolean(data.attempt), receipt: data.receipt, tracking: data.tracking, refund: data.refund ? { reference: data.refund.reference, recipient: data.refund.recipient, amountCodec: data.refund.amountCodec, status: data.refund.status, receipt: data.refund.receipt } : undefined, reviewReason: data.reviewReason }; }
+  private view(row: Row, data: PrivateOrder): OrderView {
+    const refund = data.refund ? structuredClone(data.refund) : undefined;
+    if (refund) delete refund.attempt;
+    return { orderId: row.id, paymentRequest: data.paymentRequest, refundPolicy: resolveRefundPolicy(data.refundPolicySnapshot), refundFeeCorrectionCodec: data.refundFeeCorrectionCodec ?? '0', status: row.status === 'unpaid' ? 'awaiting_payment' : row.status, notificationStatus: row.notification, paymentPending: Boolean(data.attempt), receipt: data.receipt, tracking: data.tracking, refund, reviewReason: data.reviewReason };
+  }
   /** Recovery requires a high-entropy bearer token, never an identifier alone. */
   get(id: string, token: string): OrderView { this.expire(); const row = this.authorized(id, token); return this.view(row, this.decode(row)); }
   private authorized(id: string, token: string): Row { const row = this.row(id); if (!tokenMatches(token, row.token_hash)) throw new RelayError(404, 'Order not found'); return row; }
@@ -167,23 +188,47 @@ export class OrderStore {
     const rows = this.db.prepare("SELECT * FROM orders WHERE status='refund_pending'").all() as unknown as Row[];
     for (const row of rows) {
       const data = this.decode(row); const refund = data.refund;
-      if (!refund || refund.reference !== evidence.reference) continue;
+      if (!refund || refund.reference !== evidence.reference || refund.amountCodec === undefined) continue;
       const request = { ...data.paymentRequest, payer: data.paymentRequest.recipient, recipient: data.paymentRequest.payer, amountCodec: refund.amountCodec, reference: refund.reference };
       let receipt: PaymentReceipt;
       try { receipt = verifyFinalizedPayment(request, { ...evidence, payer: accountAddress(evidence.payer), recipient: accountAddress(evidence.recipient) }); } catch { return false; }
-      refund.status = 'finalized'; refund.receipt = receipt; data.refundedCodec = (BigInt(data.refundedCodec) + BigInt(refund.amountCodec)).toString();
-      row.status = BigInt(data.receivedCodec) - BigInt(data.refundedCodec) - BigInt(data.fulfilledCodec ?? '0') > 0n ? 'shipping_review' : 'refunded'; if (row.status === 'refunded') data.completedAt = this.now(); if (!data.tracking) row.reserved = 0; this.db.prepare('INSERT INTO payments VALUES(?,?,?,?)').run(eventId, row.id, 'refund', encrypt(evidence, this.key, eventId)); this.enqueue(row, 'refunded'); this.save(row, data); return true;
+      let deducted = 0n; let correction = 0n;
+      if (!refund.feeExempt) {
+        if (!refund.feeQuote) return false;
+        const quoted = BigInt(refund.feeQuote.feeCodec);
+        const fee = evidence.networkFee;
+        if (fee && accountAddress(fee.payer) === request.payer && fee.assetId === request.assetId) {
+          const actual = codecAmount(fee.amountCodec); refund.actualFeeCodec = actual.toString();
+          deducted = actual < quoted ? actual : quoted;
+        }
+        // An unproven fee is not charged to the customer. Preserve the observed transfer
+        // and make the undeducted remainder a separate, fee-exempt liability.
+        correction = quoted - deducted;
+        data.refundFeeCorrectionCodec = (BigInt(data.refundFeeCorrectionCodec ?? '0') + correction).toString();
+        if (correction > 0n) data.reviewReason = refund.actualFeeCodec === undefined ? 'refund_fee_evidence_missing' : 'refund_fee_correction';
+      } else if (resolveRefundPolicy(data.refundPolicySnapshot).mode === 'net-network-fee') {
+        const remaining = BigInt(data.refundFeeCorrectionCodec ?? '0') - BigInt(refund.grossAmountCodec);
+        if (remaining < 0n) throw new Error('Invalid refund correction accounting');
+        data.refundFeeCorrectionCodec = remaining.toString();
+      }
+      refund.status = 'finalized'; refund.receipt = receipt; refund.deductedFeeCodec = deducted.toString(); refund.feeCorrectionCodec = correction.toString();
+      data.refundedCodec = (BigInt(data.refundedCodec) + BigInt(refund.amountCodec)).toString();
+      data.refundFeesCodec = (BigInt(data.refundFeesCodec ?? '0') + deducted).toString();
+      row.status = this.outstanding(data) > 0n ? 'shipping_review' : 'refunded';
+      if (row.status === 'refunded') { data.completedAt = this.now(); delete data.reviewReason; }
+      if (!data.tracking) row.reserved = 0;
+      this.db.prepare('INSERT INTO payments VALUES(?,?,?,?)').run(eventId, row.id, 'refund', encrypt(evidence, this.key, eventId)); this.enqueue(row, row.status === 'refunded' ? 'refunded' : 'shipping_review'); this.save(row, data); return true;
     }
     return false;
   }
   /** Read a private operator queue; HTTP authentication is enforced by the server. */
-  list(): Array<OrderView & { owner: string | null; address: Address; contact: Contact; quantity: number; receivedCodec: string; refundedCodec: string }> {
-    this.expire(); return (this.db.prepare("SELECT * FROM orders ORDER BY CASE WHEN status IN ('paid','shipping_review','refund_pending') THEN 0 ELSE 1 END, created ASC LIMIT 500").all() as unknown as Row[]).map((row) => { const data = this.decode(row); return { ...this.view(row, data), owner: row.owner, address: data.input.address, contact: data.input.contact, quantity: row.quantity, receivedCodec: data.receivedCodec, refundedCodec: data.refundedCodec }; });
+  list(): Array<OrderView & { owner: string | null; address: Address; contact: Contact; quantity: number; receivedCodec: string; refundedCodec: string; refundFeesCodec: string }> {
+    this.expire(); return (this.db.prepare("SELECT * FROM orders ORDER BY CASE WHEN status IN ('paid','shipping_review','refund_pending') THEN 0 ELSE 1 END, created ASC LIMIT 500").all() as unknown as Row[]).map((row) => { const data = this.decode(row); return { ...this.view(row, data), owner: row.owner, address: data.input.address, contact: data.input.contact, quantity: row.quantity, receivedCodec: data.receivedCodec, refundedCodec: data.refundedCodec, refundFeesCodec: data.refundFeesCodec ?? '0' }; });
   }
   /** Fetch one operator record directly even when a large queue is paginated by the caller. */
-  operatorOrder(id: string): ReturnType<OrderStore['list']>[number] {
+  operatorOrder(id: string): ReturnType<OrderStore['list']>[number] & { refundHistory: RefundObligation[] } {
     const row = this.row(id); const data = this.decode(row);
-    return { ...this.view(row, data), owner: row.owner, address: data.input.address, contact: data.input.contact, quantity: row.quantity, receivedCodec: data.receivedCodec, refundedCodec: data.refundedCodec };
+    return { ...this.view(row, data), owner: row.owner, address: data.input.address, contact: data.input.contact, quantity: row.quantity, receivedCodec: data.receivedCodec, refundedCodec: data.refundedCodec, refundFeesCodec: data.refundFeesCodec ?? '0', refundHistory: structuredClone(data.refundHistory ?? []) };
   }
   /** Return private chain evidence for payment mismatch/refund reconciliation. */
   paymentEvidence(id: string): FinalizedTransferEvidence[] {
@@ -205,20 +250,47 @@ export class OrderStore {
   approve(id: string, owner: string): void {
     this.atomic(() => {
       const row = this.row(id); const data = this.decode(row);
-      if (row.owner !== owner || row.status !== 'shipping_review' || data.tracking || data.refund?.status === 'pending' || BigInt(data.receivedCodec) - BigInt(data.refundedCodec) !== BigInt(data.paymentRequest.amountCodec)) throw new RelayError(409, 'Order requires refund or reconciliation');
+      if (row.owner !== owner || row.status !== 'shipping_review' || data.tracking || data.refund?.status === 'pending' || this.outstanding(data) !== BigInt(data.paymentRequest.amountCodec) || BigInt(data.refundFeeCorrectionCodec ?? '0') > 0n) throw new RelayError(409, 'Order requires refund or reconciliation');
       if (!row.reserved && this.available() !== null && this.available()! < row.quantity) throw new RelayError(409, 'Insufficient stock');
       row.reserved = 1; row.status = 'paid'; delete data.reviewReason; this.enqueue(row, 'paid'); this.save(row, data);
     });
   }
-  /** Create a full remaining-XOR obligation; only the group wallet signs the refund. */
+  /** Reserve an immutable reference; net-policy drafts require a trusted quote before signing. */
   refund(id: string, owner: string): RefundObligation {
-    return this.atomic(() => { const row = this.row(id); const data = this.decode(row); if (row.owner !== owner || !['paid', 'shipping_review', 'refund_pending'].includes(row.status)) throw new RelayError(409, 'Order is not refundable by this operator'); if (data.refund?.status === 'pending') return data.refund; const amount = BigInt(data.receivedCodec) - BigInt(data.refundedCodec) - BigInt(data.fulfilledCodec ?? '0'); if (amount <= 0n) throw new RelayError(409, 'No outstanding payment'); data.refund = { reference: `sp_${randomBytes(16).toString('hex')}`, recipient: data.paymentRequest.payer, amountCodec: amount.toString(), status: 'pending' }; row.status = 'refund_pending'; this.enqueue(row, 'refund_pending'); this.save(row, data); return data.refund; });
+    return this.atomic(() => {
+      const row = this.row(id); const data = this.decode(row);
+      if (row.owner !== owner || !['paid', 'shipping_review', 'refund_pending'].includes(row.status)) throw new RelayError(409, 'Order is not refundable by this operator');
+      if (data.refund?.status === 'pending') return data.refund;
+      const outstanding = this.outstanding(data); const correction = BigInt(data.refundFeeCorrectionCodec ?? '0');
+      if (outstanding <= 0n || correction > outstanding) throw new RelayError(409, 'No outstanding payment');
+      const amount = correction > 0n ? correction : outstanding;
+      const feeExempt = correction > 0n || resolveRefundPolicy(data.refundPolicySnapshot).mode === 'full';
+      if (data.refund?.status === 'finalized') {
+        const previous = structuredClone(data.refund); delete previous.attempt;
+        (data.refundHistory ??= []).push(previous);
+      }
+      data.refund = { reference: `sp_${randomBytes(16).toString('hex')}`, recipient: data.paymentRequest.payer, grossAmountCodec: amount.toString(), ...(feeExempt ? { amountCodec: amount.toString() } : {}), feeExempt, status: 'pending' };
+      row.status = 'refund_pending'; this.enqueue(row, 'refund_pending'); this.save(row, data); return data.refund;
+    });
+  }
+  /** Save a short-lived authoritative quote only while no refund signing attempt exists. */
+  quoteRefund(id: string, owner: string, quote: RefundFeeQuote): RefundObligation {
+    return this.atomic(() => {
+      const row = this.row(id); const data = this.decode(row); const refund = data.refund;
+      if (row.owner !== owner || row.status !== 'refund_pending' || !refund || refund.status !== 'pending' || refund.feeExempt || refund.attempt) throw new RelayError(409, 'Refund quote is unavailable');
+      let amount: bigint; let fee: bigint;
+      try { amount = codecAmount(quote.amountCodec, false); fee = codecAmount(quote.feeCodec); } catch { throw new RelayError(400, 'Invalid refund fee quote'); }
+      const expiry = Date.parse(quote.expiresAt);
+      if (!/^0x[a-f0-9]{64}$/.test(quote.blockHash) || !/^(0|[1-9][0-9]{0,19})$/.test(quote.blockNumber) || !Number.isFinite(expiry) || new Date(expiry).toISOString() !== quote.expiresAt || expiry <= this.now() || expiry > this.now() + 300_000 || fee >= BigInt(refund.grossAmountCodec) || amount + fee !== BigInt(refund.grossAmountCodec)) throw new RelayError(400, 'Invalid refund fee quote');
+      refund.feeQuote = structuredClone(quote); refund.amountCodec = amount.toString(); this.save(row, data); return refund;
+    });
   }
   /** Reserve one refund signing attempt; an uncertain transaction must be reconciled, not resent. */
   refundAttempt(id: string, owner: string): { attemptToken: string } {
     return this.atomic(() => {
       const row = this.row(id); const data = this.decode(row); const refund = data.refund;
       if (row.owner !== owner || row.status !== 'refund_pending' || !refund || refund.status !== 'pending' || refund.attempt) throw new RelayError(409, 'Refund signing is already pending or unavailable');
+      if (refund.amountCodec === undefined || (!refund.feeExempt && (!refund.feeQuote || Date.parse(refund.feeQuote.expiresAt) <= this.now()))) throw new RelayError(409, 'A current refund fee quote is required');
       const attemptToken = randomBytes(32).toString('hex'); refund.attempt = { token: attemptToken, submitted: false }; this.save(row, data); return { attemptToken };
     });
   }
@@ -245,7 +317,7 @@ export class OrderStore {
       const claimToken = randomBytes(16).toString('hex');
       this.db.prepare('UPDATE outbox SET claim_token=?,claim_until=? WHERE id=?').run(claimToken, this.now() + 60_000, job.id);
       const row = this.row(job.order_id); const data = this.decode(row);
-      return { id: job.id, claimToken, orderId: row.id, kind: job.kind, attempts: job.attempts, order: { ...this.view(row, data), owner: row.owner, address: data.input.address, contact: data.input.contact, quantity: row.quantity, receivedCodec: data.receivedCodec, refundedCodec: data.refundedCodec } };
+      return { id: job.id, claimToken, orderId: row.id, kind: job.kind, attempts: job.attempts, order: { ...this.view(row, data), owner: row.owner, address: data.input.address, contact: data.input.contact, quantity: row.quantity, receivedCodec: data.receivedCodec, refundedCodec: data.refundedCodec, refundFeesCodec: data.refundFeesCodec ?? '0' } };
     });
   }
   /** Persist retry delays only for the current lease; failures never alter accepted payments. */

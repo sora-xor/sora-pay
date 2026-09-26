@@ -1,7 +1,7 @@
 import { ApiPromise, WsProvider } from '@polkadot/api';
-import type { FinalizedTransferEvidence } from '../core/index.js';
+import { codecAmount, validatePaymentRequest, NATIVE_XOR_ASSET_ID, type PaymentRequest, type FinalizedTransferEvidence, type FinalizedNetworkFee } from '../core/index.js';
 import { accountAddress, type MerchantConfig } from './config.js';
-import type { OrderStore } from './store.js';
+import type { OrderStore, RefundFeeQuote } from './store.js';
 import { awaitWithAbort } from './lifecycle.js';
 
 export interface FinalizedBlock { number: number; transfers: FinalizedTransferEvidence[] }
@@ -9,6 +9,7 @@ export interface ChainReader {
   head(): Promise<number>;
   block(number: number): Promise<FinalizedBlock>;
   assertConfiguration(): Promise<void>;
+  quoteRefund(request: PaymentRequest, grossAmountCodec: string): Promise<RefundFeeQuote>;
   close(): Promise<void>;
 }
 interface Codec { toString(): string; toHex(): string; toJSON(): unknown }
@@ -56,7 +57,7 @@ export async function connectChain(config: MerchantConfig, signal?: AbortSignal)
 
 /** Read finalized chain state only. Browser hashes have no authority in this adapter. */
 export class SoraChainReader implements ChainReader {
-  constructor(private api: ApiPromise, private config: MerchantConfig, private archive?: ApiPromise) {}
+  constructor(private api: ApiPromise, private config: MerchantConfig, private archive?: ApiPromise, private now: () => number = Date.now) {}
   async close(): Promise<void> { await this.api.disconnect(); await this.archive?.disconnect(); }
   async head(): Promise<number> { if (this.api.genesisHash.toHex().toLowerCase() !== this.config.chain.genesisHash) throw new Error('RPC genesis mismatch'); const hash = await this.api.rpc.chain.getFinalizedHead(); return (await this.api.rpc.chain.getHeader(hash)).number.toNumber(); }
   async assertConfiguration(): Promise<void> {
@@ -68,6 +69,44 @@ export class SoraChainReader implements ChainReader {
     const [denomination, asset] = await Promise.all([denominatorQuery(), assetQuery({ code: this.config.chain.assetId })]);
     const details = asset.toJSON() as { precision?: number };
     if (denomination.toString() !== this.config.chain.denomination || typeof details !== 'object' || Number(details.precision) !== this.config.chain.decimals) throw new Error('Chain denomination or precision changed: checkout paused');
+  }
+  /** Estimate the exact native transfer at finalized state, using a dummy signature only for encoded length.
+   * The RPC receives no signing key or valid signature, and this method never submits an extrinsic.
+   * A mortal sr25519 envelope and zero tip match the supported wallet path; finalized fee evidence
+   * remains authoritative if nonce, signature type or runtime state changes before inclusion.
+   */
+  async quoteRefund(request: PaymentRequest, grossAmountCodec: string): Promise<RefundFeeQuote> {
+    validatePaymentRequest(request);
+    const gross = codecAmount(grossAmountCodec, false);
+    if (request.amountCodec !== grossAmountCodec || request.chainGenesisHash !== this.config.chain.genesisHash || request.assetId !== NATIVE_XOR_ASSET_ID || request.assetId !== this.config.chain.assetId || accountAddress(request.payer) !== this.config.chain.recipient || request.decimals !== this.config.chain.decimals || request.denomination !== this.config.chain.denomination || Date.parse(request.expiresAt) <= this.now()) throw new Error('Refund request configuration mismatch');
+    await this.assertConfiguration();
+    const hash = await this.api.rpc.chain.getFinalizedHead();
+    const [at, header, runtimeVersion] = await Promise.all([this.api.at(hash), this.api.rpc.chain.getHeader(hash), this.api.rpc.state.getRuntimeVersion(hash)]);
+    if (runtimeVersion.specVersion.toString() !== this.api.runtimeVersion.specVersion.toString() || runtimeVersion.transactionVersion.toString() !== this.api.runtimeVersion.transactionVersion.toString()) throw new Error('Refund runtime changed');
+    const extensions = at.registry.signedExtensions;
+    if (!extensions.includes('ChargeTransactionPayment') || extensions.includes('ChargeTransactionPayment2')) throw new Error('Unsupported refund fee extension');
+    const build = this.api.tx.liquidityProxy?.xorlessTransfer;
+    const queryInfo = at.call.transactionPaymentApi?.queryInfo;
+    if (!build || !queryInfo || !at.query.system?.account) throw new Error('Refund fee metadata unavailable');
+    const account = await at.query.system.account(request.payer);
+    const nonce = (account.toJSON() as { nonce?: unknown }).nonce;
+    if (!(typeof nonce === 'number' && Number.isSafeInteger(nonce) && nonce >= 0) && !(typeof nonce === 'string' && /^(?:0|[1-9][0-9]*|0x[0-9a-f]+)$/.test(nonce))) throw new Error('Refund nonce unavailable');
+    let amount = gross;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const call = build(0, { code: NATIVE_XOR_ASSET_ID }, request.recipient, amount.toString(), '0', '0', [], 'Disabled', `0x${Buffer.from(request.reference, 'utf8').toString('hex')}`);
+      const simulated = at.tx(call.toU8a());
+      simulated.signFake(request.payer, { blockHash: hash, genesisHash: this.api.genesisHash, runtimeVersion, nonce, tip: 0, era: at.registry.createType('ExtrinsicEra', { current: header.number, period: 64 }) });
+      const bytes = simulated.toU8a();
+      const info = await queryInfo(bytes, bytes.length);
+      const feeValue = (info as unknown as { partialFee?: Codec }).partialFee;
+      if (!feeValue) throw new Error('Refund fee unavailable');
+      const fee = codecAmount(feeValue.toString(), false);
+      if (fee >= gross) throw new Error('Refund amount does not cover its network fee');
+      const net = gross - fee;
+      if (net === amount) return { amountCodec: net.toString(), feeCodec: fee.toString(), blockHash: hash.toHex().toLowerCase(), blockNumber: header.number.toString(), expiresAt: new Date(this.now() + 120_000).toISOString() };
+      amount = net;
+    }
+    throw new Error('Refund fee did not converge');
   }
   async block(number: number): Promise<FinalizedBlock> {
     if (number > await this.head()) throw new Error('Cannot read unfinalized block');
@@ -110,10 +149,32 @@ export class SoraChainReader implements ChainReader {
       const assetJson = data[0]!.toJSON();
       const assetId = typeof assetJson === 'string' ? assetJson : (assetJson as { code?: string })?.code;
       if (typeof assetId !== 'string') throw new Error('Unrecognized asset identifier');
-      transfers.push({ chainGenesisHash: this.config.chain.genesisHash, assetId: assetId.toLowerCase(), payer: accountAddress(data[1]!.toString()), recipient: accountAddress(data[2]!.toString()), amountCodec: data[3]!.toString(), reference, transactionHash: extrinsic.hash.toHex(), blockHash: hash, blockNumber: String(number), eventIndex, successful: true, finalized: true, finalizedAt });
+      const payer = accountAddress(data[1]!.toString());
+      const networkFee = finalizedNetworkFee(records, extrinsicIndex, extrinsic, payer, assetId.toLowerCase());
+      transfers.push({ ...(networkFee ? { networkFee } : {}), chainGenesisHash: this.config.chain.genesisHash, assetId: assetId.toLowerCase(), payer: accountAddress(data[1]!.toString()), recipient: accountAddress(data[2]!.toString()), amountCodec: data[3]!.toString(), reference, transactionHash: extrinsic.hash.toHex(), blockHash: hash, blockNumber: String(number), eventIndex, successful: true, finalized: true, finalizedAt });
     }
     return { number, transfers };
   }
+}
+
+/** Corroborate SORA's withdrawal with TransactionFeePaid; these describe ONE fee, never two.
+ * Unknown event layouts, tips, nested calls and multiple transfers do not establish a deductible fee.
+ */
+function finalizedNetworkFee(records: EventRecord[], extrinsicIndex: number, extrinsic: { isSigned: boolean; signer: { toString(): string }; method: { section: string; method: string } }, payer: string, assetId: string): FinalizedNetworkFee | undefined {
+  try {
+    if (assetId !== NATIVE_XOR_ASSET_ID || !extrinsic.isSigned || extrinsic.method.section !== 'liquidityProxy' || extrinsic.method.method !== 'xorlessTransfer' || accountAddress(extrinsic.signer.toString()) !== payer) return undefined;
+    const related = records.map((record, index) => ({ record, index })).filter(({ record }) => record.phase.isApplyExtrinsic && record.phase.asApplyExtrinsic.toNumber() === extrinsicIndex);
+    if (related.filter(({ record: { event } }) => event.section === 'liquidityProxy' && event.method === 'XorlessTransfer').length !== 1) return undefined;
+    const withdrawals = related.filter(({ record: { event } }) => event.section === 'xorFee' && event.method === 'FeeWithdrawn');
+    const paidEvents = related.filter(({ record: { event } }) => event.section === 'transactionPayment' && event.method === 'TransactionFeePaid');
+    if (withdrawals.length !== 1 || paidEvents.length !== 1) return undefined;
+    const withdrawal = withdrawals[0]!; const feeData = withdrawal.record.event.data; const paid = paidEvents[0]!.record.event.data;
+    // Mainnet spec131's FeeWithdrawn is (AccountId, Balance); other layouts need explicit review.
+    if (feeData.length !== 2 || paid.length !== 3 || accountAddress(feeData[0]!.toString()) !== payer || accountAddress(paid[0]!.toString()) !== payer || paid[2]!.toString() !== '0') return undefined;
+    const amount = codecAmount(feeData[1]!.toString());
+    if (amount !== codecAmount(paid[1]!.toString())) return undefined;
+    return { payer, assetId, amountCodec: amount.toString(), eventIndex: withdrawal.index };
+  } catch { return undefined; }
 }
 
 /** Catch up in bounded batches; committing after events makes crash replays idempotent. */

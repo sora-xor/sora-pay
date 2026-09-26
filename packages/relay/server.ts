@@ -1,7 +1,8 @@
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from 'node:http';
 import { isIP } from 'node:net';
 import { digest, tokenMatches } from './crypto.js';
-import { RelayError, type CreateOrder, type OrderStore } from './store.js';
+import { RelayError, type CreateOrder, type OrderStore, type RefundFeeQuote, type RefundObligation } from './store.js';
+import type { PaymentRequest } from '../core/index.js';
 
 /** Bounded JSON parser protects the public relay from oversized private payloads. */
 async function body(request: IncomingMessage): Promise<Record<string, unknown>> {
@@ -35,11 +36,20 @@ export function relayClientAddress(peer: string | undefined, header: string | st
 }
 
 /** Bind behind the approved TLS proxy. It must disable request-body and authorization logging. */
-export function createRelayServer(store: OrderStore, options: { operatorToken: string; ready: () => boolean; trustLoopbackProxy?: boolean }): Server {
+export function createRelayServer(store: OrderStore, options: { operatorToken: string; ready: () => boolean; trustLoopbackProxy?: boolean; quoteRefund?: (request: PaymentRequest, grossAmountCodec: string) => Promise<RefundFeeQuote> }): Server {
   if (options.operatorToken.length < 32) throw new Error('A strong operator token is required');
   const operatorDigest = digest(options.operatorToken);
   const attempts = new Map<string, { count: number; until: number }>();
   const send = (response: ServerResponse, status: number, value: unknown): void => { response.statusCode = status; response.setHeader('Content-Type', 'application/json'); response.end(JSON.stringify(value)); };
+  /** The server constructs refund intent from saved evidence; HTTP fee/amount fields have no authority. */
+  const trustedRefundQuote = async (id: string, owner: string, refund: RefundObligation): Promise<RefundFeeQuote> => {
+    const order = store.operatorOrder(id);
+    if (order.owner !== owner || order.refund?.reference !== refund.reference) throw new RelayError(409, 'Refund changed during fee estimation');
+    if (!options.ready() || !options.quoteRefund) throw new RelayError(503, 'Refund fee estimation temporarily unavailable');
+    const payment: PaymentRequest = { ...order.paymentRequest, payer: order.paymentRequest.recipient, recipient: refund.recipient, amountCodec: refund.grossAmountCodec, reference: refund.reference, expiresAt: new Date(store.now() + 120_000).toISOString() };
+    try { return await options.quoteRefund(payment, refund.grossAmountCodec); }
+    catch { throw new RelayError(503, 'Refund fee estimation temporarily unavailable'); }
+  };
   const server = createServer(async (request, response) => {
     response.setHeader('Cache-Control', 'no-store'); response.setHeader('X-Content-Type-Options', 'nosniff'); response.setHeader('Referrer-Policy', 'no-referrer');
     try {
@@ -81,8 +91,29 @@ export function createRelayServer(store: OrderStore, options: { operatorToken: s
           const input = await body(request); const id = action[1]!; const owner = input.owner as string;
           if (action[2] === 'claim') store.claim(id, owner);
           if (action[2] === 'ship') store.ship(id, owner, input.tracking as string, input.shippingReviewed as boolean);
-          if (action[2] === 'refund') { send(response, 200, store.refund(id, owner)); return; }
-          if (action[2] === 'refund-attempt') { send(response, 200, store.refundAttempt(id, owner)); return; }
+          if (action[2] === 'refund') {
+            let refund = store.refund(id, owner);
+            if (!refund.feeExempt && !refund.attempt) {
+              const quote = await trustedRefundQuote(id, owner, refund);
+              if (store.operatorOrder(id).refund?.reference !== refund.reference) throw new RelayError(409, 'Refund changed during fee estimation');
+              refund = store.quoteRefund(id, owner, quote);
+            }
+            send(response, 200, refund); return;
+          }
+          if (action[2] === 'refund-attempt') {
+            const order = store.operatorOrder(id);
+            if (order.owner !== owner || order.refund?.status !== 'pending') throw new RelayError(409, 'Refund signing is already pending or unavailable');
+            // The public order view strips signing credentials; the existing pending obligation retains its lease.
+            const refund = store.refund(id, owner);
+            if (refund.reference !== order.refund.reference || refund.attempt) throw new RelayError(409, 'Refund signing is already pending or unavailable');
+            if (!refund.feeExempt) {
+              if (!refund.feeQuote || Date.parse(refund.feeQuote.expiresAt) <= store.now()) throw new RelayError(409, 'A current refund fee quote is required');
+              const quote = await trustedRefundQuote(id, owner, refund);
+              const current = store.operatorOrder(id).refund;
+              if (current?.reference !== refund.reference || current.amountCodec !== refund.amountCodec || current.feeQuote?.feeCodec !== refund.feeQuote.feeCodec || quote.amountCodec !== refund.amountCodec || quote.feeCodec !== refund.feeQuote.feeCodec) throw new RelayError(409, 'Refund fee changed; request a new quote');
+            }
+            send(response, 200, store.refundAttempt(id, owner)); return;
+          }
           if (action[2] === 'refund-transaction') store.refundTransactionHint(id, owner, input.attemptToken as string, input.transactionHash as string);
           if (action[2] === 'refund-cancel') store.cancelRefundAttempt(id, owner, input.attemptToken as string);
           if (action[2] === 'approve') store.approve(id, owner);

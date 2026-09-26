@@ -44,6 +44,15 @@ export interface WalletAdapter {
 }
 
 /** Evidence must come from a trusted finalized-chain reader, never a browser-supplied assertion. */
+export interface FinalizedNetworkFee {
+  payer: string;
+  assetId: string;
+  amountCodec: string;
+  /** Fee event in the same finalized extrinsic as the transfer. */
+  eventIndex: number;
+}
+
+/** Evidence must come from a trusted finalized-chain reader, never a browser-supplied assertion. */
 export interface FinalizedTransferEvidence {
   chainGenesisHash: string;
   assetId: string;
@@ -58,6 +67,8 @@ export interface FinalizedTransferEvidence {
   successful: boolean;
   finalized: boolean;
   finalizedAt: string;
+  /** Absent when the reader cannot unambiguously establish the actual native fee. */
+  networkFee?: FinalizedNetworkFee;
 }
 
 /** A receipt is constructed only after matching trusted finalized transfer evidence. */
@@ -184,6 +195,12 @@ export function verifyFinalizedPayment(request: PaymentRequest, evidence: Finali
   ensure(Number.isSafeInteger(evidence.eventIndex) && evidence.eventIndex >= 0, 'invalid_event');
   ensure(isTimestamp(evidence.finalizedAt), 'invalid_finalized_at');
   codecAmount(evidence.amountCodec, false);
+  if (evidence.networkFee !== undefined) {
+    const fee = evidence.networkFee;
+    ensure(fee != null && typeof fee === 'object' && typeof fee.payer === 'string' && ACCOUNT.test(fee.payer) && fee.assetId === NATIVE_XOR_ASSET_ID, 'invalid_network_fee');
+    codecAmount(fee.amountCodec);
+    ensure(Number.isSafeInteger(fee.eventIndex) && fee.eventIndex >= 0 && fee.eventIndex !== evidence.eventIndex, 'invalid_network_fee');
+  }
   for (const key of ['chainGenesisHash', 'assetId', 'payer', 'recipient', 'amountCodec', 'reference'] as const) {
     ensure(evidence[key] === request[key], `payment_mismatch_${key}`);
   }

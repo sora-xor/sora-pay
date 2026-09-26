@@ -48,7 +48,7 @@ async function main(): Promise<void> {
     ready = false;
     console.error(stage === 'reconcile' && error instanceof ArchiveRequiredError ? 'Relay archive_required: approved historical event source required; checkout paused and scan cursor preserved.' : `Relay ${stage} unavailable; checkout paused.`);
   });
-  const server = createRelayServer(store, { operatorToken: secret('SORA_PAY_OPERATOR_TOKEN'), trustLoopbackProxy: process.env.SORA_PAY_TRUST_LOOPBACK_PROXY === '1', ready: () => ready && Date.now() - lastReconciledAt < 30_000 });
+  const server = createRelayServer(store, { operatorToken: secret('SORA_PAY_OPERATOR_TOKEN'), trustLoopbackProxy: process.env.SORA_PAY_TRUST_LOOPBACK_PROXY === '1', ready: () => ready && Date.now() - lastReconciledAt < 30_000, quoteRefund: async (request, gross) => { if (!chain) throw new Error('Refund chain unavailable'); return chain.quoteRefund(request, gross); } });
   server.listen(Number(process.env.SORA_PAY_PORT ?? 39848), '127.0.0.1');
   let wake: (() => void) | undefined;
   let serverClosed: Promise<void> | undefined;

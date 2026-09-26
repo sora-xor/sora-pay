@@ -2,7 +2,11 @@
 
 Native SORA XOR payments for static websites. Sora Pay contains an exact-arithmetic TypeScript core, a dependency-free browser widget, and a private merchant relay. It is Apache-2.0 licensed. The relay verifies finalized chain events and delivers private fulfillment messages; it never holds wallet spending keys.
 
-## Unreleased
+## 0.2.0
+
+New orders can deduct the verified outbound SORA network fee from a refund. Existing orders keep their saved terms; any overestimated deduction is returned without another customer fee.
+
+Relay integrations must handle an unquoted refund draft without `amountCodec`. The gross amount and saved policy are available immediately; only an authoritative fee quote enables a net refund signing attempt.
 
 The restore command loads only its local backup dependencies. RPC, HTTP, catalog and notification modules are loaded only when serving the relay, reducing restore startup work without changing encryption, key validation or overwrite protection.
 
@@ -25,13 +29,13 @@ corepack yarn --version # Must print 4.10.3.
 corepack yarn install --immutable
 corepack yarn build
 corepack yarn test
-corepack yarn pack --out sora-pay-0.1.1.tgz
-corepack yarn check:package sora-pay-0.1.1.tgz
+corepack yarn pack --out sora-pay-0.2.0.tgz
+corepack yarn check:package sora-pay-0.2.0.tgz
 ```
 
 The package check uses Python 3's standard library, validates the public file allowlist and required provider snapshots, and preserves the root Apache license. It rejects private files, internal reports, and nested staging README/license files. Run it before copying or publishing an archive.
 
-`@sora/sora-pay/core` and `@sora/sora-pay/widget` are browser ESM exports. `@sora/sora-pay/relay` and `@sora/sora-pay/providers` are Node-only. The package contains compiled JavaScript/declarations, source, provider snapshots, deployment templates, documentation, examples and the license. Published consumers should pin `0.1.1`, or vendor the generated versioned archive with a recorded checksum. Never use a sibling-directory dependency in an IPFS production build. The core and widget have no runtime imports outside this package; a static server can serve their compiled ESM files directly.
+`@sora/sora-pay/core` and `@sora/sora-pay/widget` are browser ESM exports. `@sora/sora-pay/relay` and `@sora/sora-pay/providers` are Node-only. The package contains compiled JavaScript/declarations, source, provider snapshots, deployment templates, documentation, examples and the license. Published consumers should pin `0.2.0`, or vendor the generated versioned archive with a recorded checksum. Never use a sibling-directory dependency in an IPFS production build. The core and widget have no runtime imports outside this package; a static server can serve their compiled ESM files directly.
 
 Run a static server from the repository root and open `examples/basic/index.html` to try the explicitly labeled offline demonstration. Its mock adapter never connects a wallet or transfers funds. HTTPS or localhost is required for the widget's Web Locks submission guard.
 
@@ -107,7 +111,7 @@ Verify the merchant wallet, operator/support details, shipping destinations and 
 
 The [disabled Polkaswap configuration](deploy/merchant.polkaswap.json.example) keeps `wss://ws.mof.sora.org` as its primary RPC and explicitly selects the existing approved OVH archive at `wss://mof2.sora.org` for unavailable historical state. The primary remains authoritative for finality and canonical block hashes; archive responses must match its chain and block identity. A September 25, 2026 read-only probe verified historical event decoding 1,024 blocks behind the primary finalized head, beyond its 256-block state window. This does not enable payments or replace the paid-order/refund rehearsal. Generic merchant templates have no default archive endpoint; see the [archive recovery guidance](docs/relay.md).
 
-The merchant's order state is authoritative for fulfillment and refunds. A successful wallet callback is only submission. A notification outage must not discard an accepted order. The relay notifies a private volunteer destination automatically; assigned volunteers acknowledge orders and send tracking to the supplied customer contact. Telegram support handles are not bot chat identifiers. Refunds are separately approved obligations paid manually from the group wallet, protected by durable signing-attempt leases, and marked complete only after verified outgoing finalized evidence. The full originally received XOR, including shipping, is owed when fulfillment is impossible; the store bears its refund network fee.
+The merchant's order state is authoritative for fulfillment and refunds. A successful wallet callback is only submission. A notification outage must not discard an accepted order. The relay notifies a private volunteer destination automatically; assigned volunteers acknowledge orders and send tracking to the supplied customer contact. Telegram support handles are not bot chat identifiers. Refunds are separately approved obligations paid manually from the group wallet, protected by durable signing-attempt leases, and marked complete only after verified outgoing finalized evidence. New Polkaswap orders refund the XOR received, including shipping, minus the verified SORA network fee for sending the refund, capped at the quoted fee. The original payment fee is not refundable because the store never received it. Each order saves its refund-policy version; historical orders without a snapshot retain their full-refund terms. An overestimated refund fee leaves a separate fee-exempt amount owed to the customer. See the [refund accounting procedure](docs/relay.md#refund-accounting).
 
 ## Validation
 

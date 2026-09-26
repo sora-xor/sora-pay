@@ -68,3 +68,14 @@ test('only complete matching finalized evidence creates a receipt, even when ver
   assert.equal(verifyFinalizedPayment({ ...request, expiresAt: '2020-01-01T00:00:00.000Z' }, evidence).status, 'finalized');
   assert.throws(() => paymentEventId({ ...evidence, eventIndex: -1 }), PaymentError);
 });
+
+test('optional finalized native fee evidence is bounded and does not alter the transfer amount', () => {
+  const networkFee = { payer: request.payer, assetId: request.assetId, amountCodec: '123', eventIndex: 8 };
+  const receipt = verifyFinalizedPayment(request, { ...evidence, networkFee });
+  assert.equal(receipt.evidence.amountCodec, request.amountCodec);
+  assert.deepEqual(receipt.evidence.networkFee, networkFee);
+  assert.doesNotThrow(() => verifyFinalizedPayment(request, { ...evidence, networkFee: { ...networkFee, amountCodec: '0' } }));
+  for (const change of [{ payer: 'invalid' }, { payer: [request.payer] }, { assetId: `0x${'3'.repeat(64)}` }, { amountCodec: '-1' }, { amountCodec: '1e18' }, { eventIndex: -1 }, { eventIndex: evidence.eventIndex }]) {
+    assert.throws(() => verifyFinalizedPayment(request, { ...evidence, networkFee: { ...networkFee, ...change } }));
+  }
+});

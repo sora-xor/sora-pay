@@ -1,5 +1,6 @@
 {
   "enabled": false,
+  "refundPolicy": { "version": 2, "mode": "net-network-fee" },
   "fulfillmentMode": "on-demand",
   "version": "polkaswap-tea-pilot-1",
   "merchant": {
@@ -10,7 +11,7 @@
     "dispatchPolicy": "Volunteers purchase sealed tea after payment and confirm shipping availability before dispatch. Contact support for dispatch estimates.",
     "customsPolicy": "Delivery is offered only where lawful and carrier service is available. Destination import duties and taxes are not included in checkout. The customer is responsible for charges assessed by the destination authorities or carrier.",
     "privacyPolicy": "Delivery details and contact are encrypted in the private relay and sent to the private volunteer notification destination. The relay deletes these details 30 days after shipment or refund, or 24 hours after an unpaid quote expires. Notification inboxes and encrypted backups have separate retention; contact support about those copies or privacy requests. Chain payments remain public.",
-    "cancellationPolicy": "If an order cannot be shipped, the store returns the full XOR received including shipping to the verified paying wallet. The store pays the outgoing refund fee. Contact support to request cancellation before dispatch; no fixed refund processing deadline is promised."
+    "cancellationPolicy": "If an order cannot be shipped, we refund the XOR received, including shipping, minus the SORA network fee for sending the refund. Your original payment’s network fee is non-refundable. Refunds go to the verified paying wallet. Contact support to cancel before dispatch; refund processing has no fixed deadline."
   },
   "pricing": {
     "kind": "exact-xor",
