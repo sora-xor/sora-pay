@@ -8,3 +8,4 @@ export * from './notifications.js';
 export * from './backup.js';
 export * from './catalog-refresh.js';
 export * from './lifecycle.js';
+export * from './storage-admission.js';

@@ -9,20 +9,31 @@ const merchant = 'cnSG3F5hh3Z5JzV2Qzn6Ez71CL8NUTi68wr9zrjdNedrJht1C';
 const now = Date.parse('2026-09-26T00:00:00.000Z');
 
 /** A private in-memory order and ephemeral loopback HTTP server; no external services are contacted. */
-async function fixture(options: { legacy?: boolean; quote?: (request: PaymentRequest, gross: string) => Promise<RefundFeeQuote> } = {}) {
+async function fixture(options: { legacy?: boolean; admissionReady?: () => boolean; quote?: (request: PaymentRequest, gross: string) => Promise<RefundFeeQuote> } = {}) {
   const config = validateConfig({ enabled: true, fulfillmentMode: 'on-demand', version: 'test', refundPolicy: options.legacy ? { version: 1, mode: 'full' } : { version: 2, mode: 'net-network-fee' }, merchant: { id: 'test', name: 'Test', operatorName: 'Test', supportTelegram: 'sora_xor', dispatchPolicy: 'Test', customsPolicy: 'Test', privacyPolicy: 'Test', cancellationPolicy: 'Test' }, pricing: { kind: 'exact-xor', mode: 'launch-fixed', version: 'test', jpyPerUsd: '150', usdPerXor: '5.37', fxDate: '2026-09-26', fxSource: 'https://example.test' }, product: { id: 'tea', name: 'Tea', priceXor: '1', grams: 100, packedGrams: 120, packagingGrams: 80 }, shipping: [{ id: 'jp', countries: ['JP'], maxGrams: 500, priceXor: '0', label: 'Test', reviewedAt: '2026-09-26' }], chain: { genesisHash: `0x${'a'.repeat(64)}`, assetId: NATIVE_XOR, decimals: 18, denomination: '1', recipient: merchant, rpcUrl: 'wss://example.test', startBlock: 100 }, allowedOrigins: ['https://polkaswap.io'], retentionDays: 30 });
   let clock = now;
   const store = new OrderStore(':memory:', config, Buffer.alloc(32, 7), () => clock);
   const order = store.create({ productId: 'tea', quantity: 1, shippingRateId: 'jp', payer, idempotencyKey: randomUUID(), address: { name: 'Synthetic', line1: 'Synthetic', city: 'Synthetic', country: 'JP' }, contact: { type: 'telegram', value: '@synthetic' } });
   store.accept({ ...order.paymentRequest, transactionHash: `0x${'1'.repeat(64)}`, blockHash: `0x${'2'.repeat(64)}`, blockNumber: '100', eventIndex: 0, finalized: true, successful: true, finalizedAt: new Date(now).toISOString() });
   store.claim(order.orderId, 'volunteer');
-  const server = createRelayServer(store, { operatorToken: 'o'.repeat(64), ready: () => true, quoteRefund: options.quote });
+  const server = createRelayServer(store, { operatorToken: 'o'.repeat(64), ready: () => true, admissionReady: options.admissionReady, quoteRefund: options.quote });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/v1/operator/orders/${order.orderId}`;
   const post = (action: string, extra: object = {}, token = 'o'.repeat(64)) => fetch(base + '/' + action, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }, body: JSON.stringify({ owner: 'volunteer', ...extra }) });
   return { store, order, post, tick: () => { clock += 121_000; }, close: async () => { await new Promise<void>((resolve) => server.close(() => resolve())); store.close(); } };
 }
 const quote = (gross: string, fee = '100'): RefundFeeQuote => ({ amountCodec: (BigInt(gross) - BigInt(fee)).toString(), feeCodec: fee, blockHash: `0x${'2'.repeat(64)}`, blockNumber: '100', expiresAt: new Date(now + 120_000).toISOString() });
+
+test('storage admission pause does not block authenticated refund fee quotes or refund leases', async () => {
+  let quotes = 0;
+  const f = await fixture({ admissionReady: () => false, quote: async (_request, gross) => { quotes++; return quote(gross); } });
+  try {
+    assert.equal((await f.post('refund')).status, 200);
+    assert.equal((await f.post('refund-attempt')).status, 200);
+    assert.equal(quotes, 2);
+    assert.equal((await f.post('refund-attempt')).status, 409);
+  } finally { await f.close(); }
+});
 
 test('HTTP refund fee comes only from trusted reverse transfer intent and is rechecked before signing', async () => {
   const requests: PaymentRequest[] = [];

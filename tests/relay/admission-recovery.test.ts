@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import type { AddressInfo } from 'node:net';
 import type { FinalizedTransferEvidence } from '../../dist/core/index.js';
-import { OrderStore, createRelayServer, validateConfig, NATIVE_XOR } from '../../dist/relay/index.js';
+import { OrderStore, createRelayServer, createStorageAdmissionGuard, createRelayLifecycle, deliverNext, scanFinalized, validateConfig, NATIVE_XOR } from '../../dist/relay/index.js';
+import type { ChainReader } from '../../dist/relay/index.js';
 
 const payer = 'cnRsfMpGQ24tCKDLBbwde6NrS9ttrXN3hjX3zMHnVDeQokoBA';
 const recipient = 'cnSG3F5hh3Z5JzV2Qzn6Ez71CL8NUTi68wr9zrjdNedrJht1C';
@@ -11,7 +12,7 @@ const operatorToken = 'o'.repeat(64);
 const now = Date.parse('2026-09-26T00:00:00.000Z');
 
 /** Synthetic capabilities, addresses and in-memory data; the only HTTP listener is ephemeral loopback. */
-async function fixture() {
+async function fixture(options: { ready?: () => boolean; admissionReady?: () => boolean; resetAdmission?: () => void } = {}) {
   const config = validateConfig({
     enabled: true, fulfillmentMode: 'on-demand', version: 'admission-test',
     merchant: { id: 'test', name: 'Test', operatorName: 'Test', supportTelegram: 'sora_xor', dispatchPolicy: 'Test', customsPolicy: 'Test', privacyPolicy: 'Test', cancellationPolicy: 'Test' },
@@ -35,7 +36,7 @@ async function fixture() {
   });
   const paidEvidence = finalized(paidOrder, 1);
   store.accept(paidEvidence);
-  const server = createRelayServer(store, { operatorToken, ready: () => false });
+  const server = createRelayServer(store, { operatorToken, ready: options.ready ?? (() => false), admissionReady: options.admissionReady, resetAdmission: options.resetAdmission });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   const request = async (path: string, body?: unknown, token?: string) => {
@@ -82,6 +83,65 @@ test('readiness pause blocks new admission but preserves capability recovery and
     assert.equal(f.store.get(f.cancelOrder.orderId, token).paymentPending, false);
     assert.equal(f.store.list().length, 3);
   } finally { await f.close(); }
+});
+
+test('separate storage pause preserves healthy chain status, receipt recovery and payment hints', async () => {
+  const f = await fixture({ ready: () => true, admissionReady: () => false });
+  try {
+    assert.deepEqual((await f.request('/healthz')).body, { ready: true, configured: true, admissionReady: false });
+    assert.equal((await f.request('/v1/catalog')).body.enabled, false);
+    assert.equal((await f.request('/v1/orders', f.input())).status, 503);
+    const path = `/v1/orders/${f.cancelOrder.orderId}`;
+    assert.equal((await f.request(path + '/payment-attempt', {}, f.cancelOrder.recoveryToken)).status, 503);
+    assert.equal((await f.request('/v1/orders/recover-create', { idempotencyKey: f.cancelInput.idempotencyKey })).status, 200);
+    assert.equal((await f.request(path, undefined, f.cancelOrder.recoveryToken)).status, 200);
+    assert.equal((await f.request(path + '/payment-attempt/cancel', { attemptToken: f.cancelLease.attemptToken }, f.cancelOrder.recoveryToken)).status, 200);
+    assert.equal((await f.request(`/v1/orders/${f.hintedOrder.orderId}/transaction`, { transactionHash: `0x${'3'.repeat(64)}` }, f.hintedOrder.recoveryToken)).status, 202);
+    assert.equal((await f.request('/v1/operator/orders', undefined, operatorToken)).status, 200);
+    assert.equal((await f.request('/v1/operator/orders')).status, 401);
+    assert.equal(f.store.list().length, 3);
+  } finally { await f.close(); }
+});
+
+test('new order admission is rechecked after reading the body before durable creation', async () => {
+  let checks = 0;
+  const f = await fixture({ ready: () => true, admissionReady: () => ++checks === 1 });
+  try {
+    assert.equal((await f.request('/v1/orders', f.input())).status, 503);
+    assert.equal(checks, 2);
+    assert.equal(f.store.list().length, 3);
+  } finally { await f.close(); }
+});
+
+test('latched storage pause leaves finalized scanning, outbox work and authenticated reset independent', async () => {
+  const floor = 5n * 1024n ** 3n;
+  let free = 10n * 1024n ** 3n;
+  let saved: boolean | undefined;
+  const guard = createStorageAdmissionGuard({ databasePath: 'synthetic', minimumFreeBytes: floor.toString(), persistence: { paused(value?: boolean) { if (value !== undefined) saved = value; return saved; } }, probe: () => ({ bavail: free, bsize: 1n }) });
+  const f = await fixture({ ready: () => true, admissionReady: () => guard.allowed(), resetAdmission: () => guard.reset() });
+  free = floor - 1n;
+  let sent = 0;
+  const reader: ChainReader = { async head() { return 100; }, async block() { return { number: 100, transfers: [f.finalized(f.hintedOrder, 2)] }; }, async assertConfiguration() {}, async close() {} };
+  const lifecycle = createRelayLifecycle({ reconcile: async (signal) => { await scanFinalized(f.store, reader, 10, signal); }, purge: () => f.store.purgePersonalData(), notify: () => deliverNext(f.store, { async send() { sent++; } }) }, () => assert.fail('independent worker failed'));
+  try {
+    assert.equal((await f.request('/v1/orders', f.input())).status, 503);
+    assert.equal(saved, true);
+    await lifecycle.tick();
+    await lifecycle.stop();
+    assert.equal(f.store.cursor(), 101);
+    assert.equal(f.store.get(f.hintedOrder.orderId, f.hintedOrder.recoveryToken).status, 'paid');
+    assert.equal(sent, 1);
+    assert.equal((await f.request('/v1/operator/admission/reset', {})).status, 401);
+    assert.equal((await f.request('/v1/operator/admission/reset', {}, f.paidOrder.recoveryToken)).status, 401);
+    assert.equal((await f.request('/v1/operator/admission/reset', {}, operatorToken)).status, 503);
+    free = 10n * 1024n ** 3n;
+    assert.equal((await f.request('/v1/catalog')).body.enabled, false);
+    assert.equal((await f.request('/v1/operator/admission/reset', { paused: false }, operatorToken)).status, 400);
+    assert.equal(saved, true);
+    assert.equal(guard.allowed(), false);
+    assert.deepEqual(await f.request('/v1/operator/admission/reset', {}, operatorToken), { status: 200, body: { admissionReady: true } });
+    assert.equal((await f.request('/v1/orders', f.input())).status, 201);
+  } finally { await lifecycle.stop(); await f.close(); }
 });
 
 test('readiness pause preserves finalized receipts and transaction hints without unlocking submitted attempts', async () => {

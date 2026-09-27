@@ -20,8 +20,8 @@ async function main(): Promise<void> {
   if (command === 'backup') { try { await encryptedBackup(store, secret('SORA_PAY_BACKUP_PATH'), key('SORA_PAY_BACKUP_KEY')); } finally { store.close(); } return; }
   if (command !== 'serve') throw new Error('Unknown command');
   // Backup and restore must not initialize RPC, HTTP, provider or notification dependencies.
-  const [{ createRelayServer }, { ArchiveRequiredError, connectChain, scanFinalized }, { deliverNext, emailDelivery, telegramDelivery }, { createCatalogRefresher }, { awaitWithAbort, createRelayLifecycle }] = await Promise.all([
-    import('./server.js'), import('./chain.js'), import('./notifications.js'), import('./catalog-refresh.js'), import('./lifecycle.js'),
+  const [{ createRelayServer }, { ArchiveRequiredError, connectChain, scanFinalized }, { deliverNext, emailDelivery, telegramDelivery }, { createCatalogRefresher }, { awaitWithAbort, createRelayLifecycle }, { createStorageAdmissionGuard }] = await Promise.all([
+    import('./server.js'), import('./chain.js'), import('./notifications.js'), import('./catalog-refresh.js'), import('./lifecycle.js'), import('./storage-admission.js'),
   ]);
   const catalog = createCatalogRefresher(config);
   let lastReconciledAt = 0;
@@ -48,7 +48,12 @@ async function main(): Promise<void> {
     ready = false;
     console.error(stage === 'reconcile' && error instanceof ArchiveRequiredError ? 'Relay archive_required: approved historical event source required; checkout paused and scan cursor preserved.' : `Relay ${stage} unavailable; checkout paused.`);
   });
-  const server = createRelayServer(store, { operatorToken: secret('SORA_PAY_OPERATOR_TOKEN'), trustLoopbackProxy: process.env.SORA_PAY_TRUST_LOOPBACK_PROXY === '1', ready: () => ready && Date.now() - lastReconciledAt < 30_000, quoteRefund: async (request, gross) => { if (!chain) throw new Error('Refund chain unavailable'); return chain.quoteRefund(request, gross); } });
+  const admission = config.storageMinimumFreeBytes === undefined ? undefined : createStorageAdmissionGuard({
+    databasePath: dbPath, minimumFreeBytes: config.storageMinimumFreeBytes,
+    persistence: { paused: (value) => store.storageAdmissionPaused(value) },
+    onPersistenceError: () => console.error('Relay storage admission pause could not be persisted; new checkout remains closed.'),
+  });
+  const server = createRelayServer(store, { operatorToken: secret('SORA_PAY_OPERATOR_TOKEN'), trustLoopbackProxy: process.env.SORA_PAY_TRUST_LOOPBACK_PROXY === '1', ready: () => ready && Date.now() - lastReconciledAt < 30_000, ...(admission ? { admissionReady: () => admission.allowed(), resetAdmission: () => admission.reset() } : {}), quoteRefund: async (request, gross) => { if (!chain) throw new Error('Refund chain unavailable'); return chain.quoteRefund(request, gross); } });
   server.listen(Number(process.env.SORA_PAY_PORT ?? 39848), '127.0.0.1');
   let wake: (() => void) | undefined;
   let serverClosed: Promise<void> | undefined;

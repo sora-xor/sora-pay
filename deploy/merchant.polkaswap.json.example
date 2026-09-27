@@ -1,5 +1,6 @@
 {
   "enabled": false,
+  "storageMinimumFreeBytes": "5368709120",
   "refundPolicy": { "version": 2, "mode": "net-network-fee" },
   "fulfillmentMode": "on-demand",
   "version": "polkaswap-tea-pilot-1",

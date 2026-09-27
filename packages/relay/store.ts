@@ -332,6 +332,15 @@ export class OrderStore {
   }
   /** Persist the next finalized block only after all its events were processed. */
   cursor(next?: number): number { if (next !== undefined) this.db.prepare("INSERT INTO meta(key,value) VALUES('cursor',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(String(next)); const found = this.db.prepare("SELECT value FROM meta WHERE key='cursor'").get() as { value: string } | undefined; return found ? Number(found.value) : this.config.chain.startBlock; }
+  /** Preserve a storage pause across restarts and encrypted backups; only the admission guard writes it. */
+  storageAdmissionPaused(paused?: boolean): boolean | undefined {
+    if (paused !== undefined) this.db.prepare("INSERT INTO meta(key,value) VALUES('storage-admission',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(JSON.stringify({ version: 1, paused }));
+    const found = this.db.prepare("SELECT value FROM meta WHERE key='storage-admission'").get() as { value: string } | undefined;
+    if (!found) return undefined;
+    const saved: unknown = JSON.parse(found.value);
+    if (!saved || typeof saved !== 'object' || (saved as { version?: unknown }).version !== 1 || typeof (saved as { paused?: unknown }).paused !== 'boolean') throw new Error('Invalid saved storage admission state');
+    return (saved as { paused: boolean }).paused;
+  }
   /** Delete encrypted PII after terminal retention; retain non-sensitive event deduplication. */
   purgePersonalData(): number {
     this.expire();

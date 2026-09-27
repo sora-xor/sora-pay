@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { decodeAddress, encodeAddress } from '@polkadot/util-crypto';
 import { xorPriceFromJpy, xorToCodec } from './pricing.js';
+import { storageMinimumBytes } from './storage-admission.js';
 
 /** Policy versions are snapshotted per order; missing historical snapshots retain full refunds. */
 export type RefundPolicy = { version: 1; mode: 'full' } | { version: 2; mode: 'net-network-fee' };
@@ -15,6 +16,8 @@ export function resolveRefundPolicy(policy?: RefundPolicy): RefundPolicy {
 /** Publishable merchant configuration; never contains credentials. */
 export interface MerchantConfig {
   enabled: boolean;
+  /** Optional exact available-byte floor for new orders and customer signing leases. */
+  storageMinimumFreeBytes?: string;
   refundPolicy?: RefundPolicy;
   fulfillmentMode?: 'on-demand' | 'stocked';
   reviewEveryPaidOrder?: boolean;
@@ -43,6 +46,7 @@ export function accountAddress(value: string): string {
 /** Fail closed before opening a payment route if any merchant input is missing. */
 export function validateConfig(value: MerchantConfig): MerchantConfig {
   if (!value || typeof value.enabled !== 'boolean') throw new Error('Invalid configuration');
+  storageMinimumBytes(value.storageMinimumFreeBytes);
   resolveRefundPolicy(value.refundPolicy);
   if (!value.enabled) return value;
   const requiredMerchantFields = ['id', 'name', 'operatorName', 'dispatchPolicy', 'customsPolicy', 'privacyPolicy', 'cancellationPolicy'] as const;

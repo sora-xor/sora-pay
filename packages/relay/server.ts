@@ -36,10 +36,12 @@ export function relayClientAddress(peer: string | undefined, header: string | st
 }
 
 /** Bind behind the approved TLS proxy. It must disable request-body and authorization logging. */
-export function createRelayServer(store: OrderStore, options: { operatorToken: string; ready: () => boolean; trustLoopbackProxy?: boolean; quoteRefund?: (request: PaymentRequest, grossAmountCodec: string) => Promise<RefundFeeQuote> }): Server {
+export function createRelayServer(store: OrderStore, options: { operatorToken: string; ready: () => boolean; admissionReady?: () => boolean; resetAdmission?: () => void; trustLoopbackProxy?: boolean; quoteRefund?: (request: PaymentRequest, grossAmountCodec: string) => Promise<RefundFeeQuote> }): Server {
   if (options.operatorToken.length < 32) throw new Error('A strong operator token is required');
   const operatorDigest = digest(options.operatorToken);
   const attempts = new Map<string, { count: number; until: number }>();
+  // Admission is separate from chain readiness so storage pauses cannot block existing refunds.
+  const admissionReady = (): boolean => options.ready() && (options.admissionReady?.() ?? true);
   const send = (response: ServerResponse, status: number, value: unknown): void => { response.statusCode = status; response.setHeader('Content-Type', 'application/json'); response.end(JSON.stringify(value)); };
   /** The server constructs refund intent from saved evidence; HTTP fee/amount fields have no authority. */
   const trustedRefundQuote = async (id: string, owner: string, refund: RefundObligation): Promise<RefundFeeQuote> => {
@@ -64,9 +66,14 @@ export function createRelayServer(store: OrderStore, options: { operatorToken: s
       const limit = attempts.get(client);
       if (!limit || limit.until < now) attempts.set(client, { count: 1, until: now + 60_000 });
       else if (++limit.count > 240) throw new RelayError(429, 'Request limit exceeded');
-      if (url.pathname === '/healthz' && request.method === 'GET') { send(response, 200, { ready: options.ready(), configured: store.config.enabled }); return; }
-      if (url.pathname === '/v1/catalog' && request.method === 'GET') { send(response, 200, { ...store.catalog(), enabled: store.config.enabled && options.ready() }); return; }
-      if (url.pathname === '/v1/orders' && request.method === 'POST') { if (!options.ready()) throw new RelayError(503, 'Checkout temporarily unavailable'); send(response, 201, store.create(await body(request) as unknown as CreateOrder)); return; }
+      if (url.pathname === '/healthz' && request.method === 'GET') { send(response, 200, { ready: options.ready(), configured: store.config.enabled, ...(options.admissionReady ? { admissionReady: store.config.enabled && admissionReady() } : {}) }); return; }
+      if (url.pathname === '/v1/catalog' && request.method === 'GET') { send(response, 200, { ...store.catalog(), enabled: store.config.enabled && admissionReady() }); return; }
+      if (url.pathname === '/v1/orders' && request.method === 'POST') {
+        if (!admissionReady()) throw new RelayError(503, 'Checkout temporarily unavailable');
+        const input = await body(request);
+        if (!admissionReady()) throw new RelayError(503, 'Checkout temporarily unavailable');
+        send(response, 201, store.create(input as unknown as CreateOrder)); return;
+      }
       if (url.pathname === '/v1/orders/recover-create' && request.method === 'POST') { const input = await body(request); send(response, 200, store.recoverCreate(input.idempotencyKey as string)); return; }
       const order = /^\/v1\/orders\/([a-f0-9-]{36})(?:\/(transaction|payment-attempt|payment-attempt\/cancel))?$/.exec(url.pathname);
       if (order) {
@@ -75,12 +82,17 @@ export function createRelayServer(store: OrderStore, options: { operatorToken: s
         if (request.method === 'POST') {
           const input = await body(request);
           if (order[2] === 'transaction') { store.transactionHint(id, token, input.transactionHash as string); send(response, 202, { accepted: true }); return; }
-          if (order[2] === 'payment-attempt') { if (!options.ready()) throw new RelayError(503, 'Checkout temporarily unavailable'); send(response, 200, store.paymentAttempt(id, token)); return; }
+          if (order[2] === 'payment-attempt') { if (!admissionReady()) throw new RelayError(503, 'Checkout temporarily unavailable'); send(response, 200, store.paymentAttempt(id, token)); return; }
           if (order[2] === 'payment-attempt/cancel') { store.cancelAttempt(id, token, input.attemptToken as string); send(response, 200, { canceled: true }); return; }
         }
       }
       if (url.pathname.startsWith('/v1/operator/')) {
         if (!tokenMatches(bearer(request), operatorDigest)) throw new RelayError(401, 'Invalid operator credential');
+        if (url.pathname === '/v1/operator/admission/reset' && request.method === 'POST' && options.resetAdmission) {
+          if (Object.keys(await body(request)).length) throw new RelayError(400, 'Expected an empty JSON object');
+          try { options.resetAdmission(); } catch { throw new RelayError(503, 'Storage admission reset unavailable'); }
+          send(response, 200, { admissionReady: store.config.enabled && admissionReady() }); return;
+        }
         if (url.pathname === '/v1/operator/orders' && request.method === 'GET') { send(response, 200, { orders: store.list() }); return; }
         const detail = /^\/v1\/operator\/orders\/([a-f0-9-]{36})$/.exec(url.pathname);
         if (detail && request.method === 'GET') { send(response, 200, store.operatorOrder(detail[1]!)); return; }
