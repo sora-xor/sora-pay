@@ -33,11 +33,11 @@ function evidence(order: OrderView): FinalizedTransferEvidence {
 
 test('approved destination configuration accepts absent/empty/ISO lists and rejects malformed lists even while disabled', () => {
   for (const enabled of [false, true]) {
-    for (const approved of [undefined, [], ['JP', 'GB', 'AX', 'BQ', 'TW']]) {
+    for (const approved of [undefined, [], ['JP', 'GB', 'AX', 'BQ', 'TW', 'XK']]) {
       const value = config(); value.enabled = enabled; value.approvedShippingCountries = approved;
       assert.doesNotThrow(() => validateConfig(value));
     }
-    for (const approved of [null, '', 'JP', 'JP,KR', {}, 1, true, ['JP', 'JP'], ['jp'], [' JP'], ['JP '], ['JPN'], ['ZZ'], ['UK'], ['XK'], ['EU'], [null], [1], [['JP']]]) {
+    for (const approved of [null, '', 'JP', 'JP,KR', {}, 1, true, ['JP', 'JP'], ['jp'], [' JP'], ['JP '], ['JPN'], ['ZZ'], ['UK'], ['EU'], [null], [1], [['JP']]]) {
       const value = config(); value.enabled = enabled;
       Object.assign(value, { approvedShippingCountries: approved });
       assert.throws(() => validateConfig(value), /Invalid approved shipping countries/, JSON.stringify(approved));

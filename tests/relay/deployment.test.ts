@@ -11,7 +11,7 @@ import { validateConfig, type MerchantConfig } from '../../dist/relay/index.js';
 function temporary() { const directory=mkdtempSync(join(tmpdir(),'sora-pay-deploy-test-'));return {directory,cleanup:()=>rmSync(directory,{recursive:true,force:true})}; }
 
 test('Polkaswap binds its approved archive without replacing primary RPC or enabling checkout', () => {
- const config = JSON.parse(readFileSync(new URL('../../deploy/merchant.polkaswap.json.example', import.meta.url), 'utf8')) as MerchantConfig;
+ const config = JSON.parse(readFileSync(new URL('../../deploy/merchant.polkaswap-worldwide.json.example', import.meta.url), 'utf8')) as MerchantConfig;
  assert.equal(config.enabled, false);
  assert.equal(config.chain.rpcUrl, 'wss://ws.mof.sora.org');
  assert.equal(config.chain.archiveRpcUrl, 'wss://mof2.sora.org');
@@ -36,16 +36,18 @@ test('staging checksums reject changed runtime bytes before creating an output t
  }finally{t.cleanup();}
 });
 
-test('staging includes the public capacity policy and manifests it without copying internal documentation',async()=>{
+test('staging selects the worldwide merchant, forces it disabled and manifests public operational runbooks only',async()=>{
  const t=temporary();try {
   const sourceRoot=join(t.directory,'source');const output=join(t.directory,'output');
   for(const path of ['dist/relay','node_modules/@polkadot/api','deploy','docs']) mkdirSync(join(sourceRoot,path),{recursive:true});
   for(const [path,content] of Object.entries({
    'package.json':JSON.stringify({name:'@sora/sora-pay',version:'0.1.1'}),
    'yarn.lock':'synthetic lockfile','LICENSE':'synthetic license','dist/relay/cli.js':'// synthetic CLI',
-   'node_modules/@polkadot/api/package.json':'{}','deploy/merchant.polkaswap.json.example':'{"enabled":false}',
+   'node_modules/@polkadot/api/package.json':'{}','deploy/merchant.polkaswap.json.example':'{"enabled":false,"version":"historical"}',
+   'deploy/merchant.polkaswap-worldwide.json.example':'{"enabled":true,"version":"worldwide"}',
    'deploy/relay.env.example':'# synthetic environment','deploy/org.sora.sora-pay-relay.plist.example':'synthetic plist',
    'deploy/run-relay.sh':'#!/bin/sh\nexit 0\n','docs/mof-readiness-internal.md':'internal fixture: do not stage',
+   'docs/shipping-destinations.md':'Synthetic public destination handling runbook',
   })) writeFileSync(join(sourceRoot,path),content);
   for(const name of ['relay.md','providers.md','staging.md','mof-capacity-policy.md']) {
    writeFileSync(join(sourceRoot,'docs',name),readFileSync(new URL(`../../docs/${name}`,import.meta.url)));
@@ -55,9 +57,12 @@ test('staging includes the public capacity policy and manifests it without copyi
   const archive=join(t.directory,'node.tar.xz');execFileSync('tar',['-cJf',archive,'-C',runtimeRoot,'test-node']);
   writeFileSync(join(sourceRoot,'deploy/runtime.json'),JSON.stringify({version:'test',directory:'test-node',sha256:await fileSha256(archive)}));
   const result=await stageRelay({sourceRoot,output,runtimeArchive:archive,installationRoot:'/synthetic/sora-pay'});
+  assert.deepEqual(JSON.parse(readFileSync(join(output,'private/merchant.json'),'utf8')),{enabled:false,version:'worldwide'});
   assert.equal(readFileSync(join(output,'docs/mof-capacity-policy.md'),'utf8'),readFileSync(join(sourceRoot,'docs/mof-capacity-policy.md'),'utf8'));
+  assert.equal(readFileSync(join(output,'docs/shipping-destinations.md'),'utf8'),readFileSync(join(sourceRoot,'docs/shipping-destinations.md'),'utf8'));
   const {manifest}=await verifyManifest(output,result.manifestSha256);
   assert.ok(manifest.files.some((file:{path:string})=>file.path==='docs/mof-capacity-policy.md'));
+  assert.ok(manifest.files.some((file:{path:string})=>file.path==='docs/shipping-destinations.md'));
   assert.equal(existsSync(join(output,'docs/mof-readiness-internal.md')),false);
  }finally{t.cleanup();}
 });

@@ -6,10 +6,11 @@ import sys
 import tarfile
 
 ROOT_FILES = {'LICENSE', 'README.md', 'package.json'}
-DOCS = {'docs/relay.md', 'docs/providers.md', 'docs/staging.md', 'docs/mof-capacity-policy.md'}
+DOCS = {'docs/relay.md', 'docs/providers.md', 'docs/staging.md', 'docs/mof-capacity-policy.md', 'docs/shipping-destinations.md'}
 DEPLOY = {f'deploy/{name}' for name in (
-    'archive-stage.py', 'check-package.py', 'check-readiness.mjs', 'check-admission-ingress.py',
-    'merchant.disabled.json.example', 'merchant.polkaswap.json.example',
+    'archive-stage.py', 'check-package.py', 'build-worldwide-catalog.mjs', 'check-readiness.mjs', 'check-admission-ingress.py',
+    'merchant.disabled.json.example', 'merchant.polkaswap.json.example', 'merchant.polkaswap-worldwide.json.example',
+    'shipping/tea-destinations.json', 'shipping/japan-post-rates.json', 'shipping/japan-post-availability.json',
     'nginx.conf.example', 'org.sora.sora-pay-relay.plist.example',
     'relay.env.example', 'run-relay.sh', 'runtime.json', 'rehearsal-proxy.mjs',
     'stage-relay.mjs', 'staging-utils.mjs',

@@ -43,18 +43,20 @@ for (const [name, code] of Object.entries(aliases)) codeByName.set(normalizedNam
 export function officialCountryCode(name: string): string | null { return codeByName.get(normalizedName(name)) ?? null; }
 
 /** Extract inert text from source markup; scripts, styles, and comments never become data. */
-function inertHtml(source: string): string {
+export function inertHtml(source: string): string {
   if (source.length > 2_000_000) throw new Error('provider_body_too_large');
   return source.replace(/<!--[\s\S]*?-->/g, '').replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, '');
 }
-function text(source: string): string {
+/** Decode only inert cell text for the official table parsers. */
+export function text(source: string): string {
   return source.replace(/<[^>]*>/g, ' ').replace(/&(?:nbsp|#160);/gi, ' ').replace(/&amp;/gi, '&').replace(/&quot;/gi, '"')
     .replace(/&#39;|&apos;/gi, "'").replace(/&#(x[0-9a-f]+|[0-9]+);/gi, (_match, value: string) => {
       const code = value[0]?.toLowerCase() === 'x' ? Number.parseInt(value.slice(1), 16) : Number.parseInt(value, 10);
       return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : '';
     }).replace(/\s+/g, ' ').trim();
 }
-function rows(source: string): string[][] {
+/** Extract table cells without evaluating source markup. */
+export function rows(source: string): string[][] {
   return [...source.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)].map((row) => [...(row[1] ?? '').matchAll(/<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi)].map((cell) => cell[1] ?? ''));
 }
 

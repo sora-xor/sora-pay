@@ -1,3 +1,4 @@
+import { POSTAL_SERVICES, type PostalRoute } from '../providers/japan-post-mail.js';
 import { readFileSync } from 'node:fs';
 import { decodeAddress, encodeAddress } from '@polkadot/util-crypto';
 import { xorPriceFromJpy, xorToCodec } from './pricing.js';
@@ -24,20 +25,20 @@ export interface MerchantConfig {
   blockedCountries?: string[];
   /** Optional reviewed destinations for new orders; an empty list permits inquiries only. */
   approvedShippingCountries?: string[];
-  providers?: { fx?: 'mufg-daily'; shipping?: 'japan-post-ems' };
+  providers?: { fx?: 'mufg-daily'; shipping?: 'japan-post-ems' | 'japan-post' };
   sourceMetadata?: Record<string, unknown>;
   version: string;
   merchant: { id: string; name: string; supportEmail?: string; supportTelegram?: string; operatorName: string; dispatchPolicy: string; customsPolicy: string; privacyPolicy: string; cancellationPolicy: string };
   pricing: { kind?: 'jpy-fixed-usd' | 'exact-xor'; mode?: 'daily' | 'launch-fixed'; version: string; jpyPerUsd: string; usdPerXor: string; fxSource: string; fxDate: string };
   product: { id: string; name: string; grams: number; packedGrams: number; packagingGrams?: number; stock?: number; priceJpy?: string; priceXor?: string };
-  shipping: Array<{ id: string; countries: string[]; maxGrams: number; priceJpy?: string; priceXor?: string; label: string; reviewedAt: string }>;
+  shipping: Array<{ carrier?: PostalRoute; id: string; countries: string[]; maxGrams: number; priceJpy?: string; priceXor?: string; label: string; reviewedAt: string }>;
   chain: { genesisHash: string; assetId: string; decimals: number; denomination: string; recipient: string; rpcUrl: string; archiveRpcUrl?: string; startBlock: number };
   allowedOrigins: string[];
   retentionDays: number;
 }
 export const NATIVE_XOR = '0x0200000000000000000000000000000000000000000000000000000000000000';
-// ISO 3166-1 alpha-2 assignments; aliases and unassigned two-letter strings are not approvals.
-const shippingCountryCodes = new Set('AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW'.split(' '));
+// ISO 3166-1 alpha-2 assignments plus XK, the explicit Japan Post Kosovo destination.
+const shippingCountryCodes = new Set('AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS XK YE YT ZA ZM ZW'.split(' '));
 
 /** Canonical SS58 makes alternate encodings of one account compare identically. */
 export function accountAddress(value: string): string {
@@ -77,9 +78,15 @@ export function validateConfig(value: MerchantConfig): MerchantConfig {
   if (value.product.packagingGrams !== undefined && (!Number.isSafeInteger(value.product.packagingGrams) || value.product.packagingGrams < 0)) throw new Error('Invalid parcel overhead');
   if (!value.product.id || !value.product.name || !value.allowedOrigins.length || !Number.isInteger(value.retentionDays) || value.retentionDays < 1) throw new Error('Incomplete store configuration');
   for (const origin of value.allowedOrigins) if (new URL(origin).origin !== origin || !origin.startsWith('https://')) throw new Error('Exact HTTPS origins required');
+  if (value.providers?.shipping && !['japan-post-ems', 'japan-post'].includes(value.providers.shipping)) throw new Error('Invalid shipping provider');
   const ids = new Set<string>();
   for (const rate of value.shipping) {
     if (!rate.id || ids.has(rate.id) || !rate.label || !/^\d{4}-\d{2}-\d{2}$/.test(rate.reviewedAt) || !Number.isSafeInteger(rate.maxGrams) || rate.maxGrams < value.product.packedGrams || !rate.countries.length || rate.countries.some((c) => !/^[A-Z]{2}$/.test(c))) throw new Error('Invalid shipping rate');
+    if (value.providers?.shipping === 'japan-post' && !rate.carrier) throw new Error('Missing postal service');
+    if (rate.carrier && (!POSTAL_SERVICES.includes(rate.carrier.service) ||
+      (rate.carrier.availabilityCountry !== undefined && !shippingCountryCodes.has(rate.carrier.availabilityCountry)) ||
+      (rate.carrier.restrictedReviewVersion !== undefined && !/^japan-post-mail-[a-f0-9]{16}$/.test(rate.carrier.restrictedReviewVersion)))) throw new Error('Invalid postal service');
+    if (rate.carrier?.service === 'letter-pack-plus' && (rate.countries.some((country) => country !== 'JP') || rate.carrier.availabilityCountry !== undefined)) throw new Error('Invalid domestic postal destination');
     ids.add(rate.id);
     merchantPrice(value, rate, true);
   }

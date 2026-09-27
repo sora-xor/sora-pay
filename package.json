@@ -1,6 +1,6 @@
 {
   "name": "@sora/sora-pay",
-  "version": "0.2.2",
+  "version": "0.2.4",
   "description": "Exact native XOR payments, a browser checkout widget, and a private merchant relay",
   "license": "Apache-2.0",
   "type": "module",
@@ -28,10 +28,18 @@
   },
   "typesVersions": {
     "*": {
-      "core": ["dist/core/index.d.ts"],
-      "widget": ["dist/widget/index.d.ts"],
-      "relay": ["dist/relay/index.d.ts"],
-      "providers": ["dist/providers/index.d.ts"]
+      "core": [
+        "dist/core/index.d.ts"
+      ],
+      "widget": [
+        "dist/widget/index.d.ts"
+      ],
+      "relay": [
+        "dist/relay/index.d.ts"
+      ],
+      "providers": [
+        "dist/providers/index.d.ts"
+      ]
     }
   },
   "files": [
@@ -44,7 +52,8 @@
     "./docs/relay.md",
     "./docs/providers.md",
     "./docs/staging.md",
-    "./docs/mof-capacity-policy.md"
+    "./docs/mof-capacity-policy.md",
+    "./docs/shipping-destinations.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

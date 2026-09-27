@@ -2,6 +2,12 @@
 
 Native SORA XOR payments for static websites. Sora Pay contains an exact-arithmetic TypeScript core, a dependency-free browser widget, and a private merchant relay. It is Apache-2.0 licensed. The relay verifies finalized chain events and delivers private fulfillment messages; it never holds wallet spending keys.
 
+## 0.2.4
+
+The merchant relay now refreshes Japan Post availability by the configured service: EMS, air/surface parcels and air/surface small packets. Reviewed restricted routes such as US merchandise retain their documented dispatch requirements; a changed carrier restriction closes that route until reviewed. Every XOR price remains frozen. Domestic Japan can use separately priced Letter Pack Plus envelopes.
+
+The Polkaswap worldwide catalog and destination handling records are in `deploy/merchant.polkaswap-worldwide.json.example` and [the shipping runbook](docs/shipping-destinations.md). The browser/payment/receipt contract is unchanged, so existing 0.2.2 storefront bundles remain compatible. No new customer declaration is introduced.
+
 ## 0.2.2
 
 An authenticated operator can reconcile a refund sent through a wallet's regular native XOR transfer. The relay independently reads the finalized transaction, checks it against the existing refund and signing attempt, and consumes its transfer event once. The receipt preserves the missing on-chain reference as `null` and records the separate operator binding; ordinary payments still require their exact reference. Reconciliation does not send another transfer or change the customer's saved refund terms.
@@ -41,13 +47,13 @@ corepack yarn --version # Must print 4.10.3.
 corepack yarn install --immutable
 corepack yarn build
 corepack yarn test
-corepack yarn pack --out sora-pay-0.2.2.tgz
-corepack yarn check:package sora-pay-0.2.2.tgz
+corepack yarn pack --out sora-pay-0.2.4.tgz
+corepack yarn check:package sora-pay-0.2.4.tgz
 ```
 
 The package check uses Python 3's standard library, validates the public file allowlist and required provider snapshots, and preserves the root Apache license. It rejects private files, internal reports, and nested staging README/license files. Run it before copying or publishing an archive.
 
-`@sora/sora-pay/core` and `@sora/sora-pay/widget` are browser ESM exports. `@sora/sora-pay/relay` and `@sora/sora-pay/providers` are Node-only. The package contains compiled JavaScript/declarations, source, provider snapshots, deployment templates, documentation, examples and the license. Published consumers should pin `0.2.2`, or vendor the generated versioned archive with a recorded checksum. Never use a sibling-directory dependency in an IPFS production build. The core and widget have no runtime imports outside this package; a static server can serve their compiled ESM files directly.
+`@sora/sora-pay/core` and `@sora/sora-pay/widget` are browser ESM exports. `@sora/sora-pay/relay` and `@sora/sora-pay/providers` are Node-only. The package contains compiled JavaScript/declarations, source, provider snapshots, deployment templates, documentation, examples and the license. Published consumers should pin `0.2.4`, or vendor the generated versioned archive with a recorded checksum. Never use a sibling-directory dependency in an IPFS production build. The core and widget have no runtime imports outside this package; a static server can serve their compiled ESM files directly.
 
 Run a static server from the repository root and open `examples/basic/index.html` to try the explicitly labeled offline demonstration. Its mock adapter never connects a wallet or transfers funds. HTTPS or localhost is required for the widget's Web Locks submission guard.
 
