@@ -12,7 +12,9 @@ export type OrderStatus = 'unpaid' | 'expired' | 'paid' | 'shipping_review' | 's
 /** Postal code may be omitted at checkout; stored orders normalize it to an empty string. */
 export interface Address { name: string; line1: string; line2?: string; city: string; region?: string; postalCode?: string; country: string }
 export interface Contact { type: 'email' | 'telegram'; value: string }
-export interface CreateOrder { productId: string; quantity: number; shippingRateId: string; payer: string; address: Address; contact: Contact; idempotencyKey: string }
+export interface CreateOrder { productId: string; quantity: number; shippingRateId: string; payer: string; address: Address; contact: Contact; idempotencyKey: string; personalUseAccepted?: boolean }
+/** Encrypted confirmation of the merchant’s individual-recipient, personal-consumption and no-resale policy. */
+export interface PersonalUseAttestation { version: 1; personalUseOnly: true; accepted: true; acceptedAt: string }
 /** Trusted chain quote for one exact refund call, never a browser-provided fee assertion. */
 export interface RefundFeeQuote { amountCodec: string; feeCodec: string; blockHash: string; blockNumber: string; expiresAt: string }
 /** A customer-agreed amount, distinct from any estimated or proven network fee. */
@@ -34,6 +36,7 @@ export interface RefundReconciliation extends FinalizedRefundLocator { owner: st
 interface RefundReconciliationAudit extends Omit<RefundReconciliation, 'attemptToken'> { version: 1; recordedAt: string; attemptTokenHash: string }
 interface PrivateOrder {
   input: CreateOrder; paymentRequest: PaymentRequest; recoveryToken: string; receivedCodec: string; refundedCodec: string;
+  personalUseAttestation?: PersonalUseAttestation;
   refundPolicySnapshot?: RefundPolicy; refundFeesCodec?: string; refundFeeCorrectionCodec?: string;
   refundAgreedDeductionsCodec?: string; refundAmendment?: RefundAmendmentAudit;
   refundReconciliations?: RefundReconciliationAudit[];
@@ -52,6 +55,7 @@ export class RelayError extends Error { constructor(public status: number, messa
 function validateInput(input: CreateOrder): CreateOrder {
   if (!input || typeof input !== 'object' || !input.address || !input.contact) throw new RelayError(400, 'Invalid order');
   if (!/^(?:[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}|[a-f0-9]{64})$/i.test(input.idempotencyKey)) throw new RelayError(400, 'A random idempotency key is required');
+  if (input.personalUseAccepted !== undefined && typeof input.personalUseAccepted !== 'boolean') throw new RelayError(400, 'Invalid personal-use confirmation');
   if (!Number.isInteger(input.quantity) || input.quantity < 1 || input.quantity > 1000) throw new RelayError(400, 'Invalid quantity');
   const address: Record<string, string> = {};
   for (const field of ['name', 'line1', 'line2', 'city', 'region', 'postalCode', 'country'] as const) {
@@ -67,7 +71,7 @@ function validateInput(input: CreateOrder): CreateOrder {
   if (input.contact.type === 'telegram' && !/^@[A-Za-z0-9_]{5,32}$/.test(input.contact.value)) throw new RelayError(400, 'Invalid Telegram handle');
   let payer: string;
   try { payer = accountAddress(input.payer); } catch { throw new RelayError(400, 'Invalid paying wallet'); }
-  return { productId: String(input.productId), quantity: input.quantity, shippingRateId: String(input.shippingRateId), payer, address: address as unknown as Address, contact: { type: input.contact.type, value: input.contact.value }, idempotencyKey: input.idempotencyKey };
+  return { productId: String(input.productId), quantity: input.quantity, shippingRateId: String(input.shippingRateId), payer, address: address as unknown as Address, contact: { type: input.contact.type, value: input.contact.value }, idempotencyKey: input.idempotencyKey, ...(input.personalUseAccepted !== undefined ? { personalUseAccepted: input.personalUseAccepted } : {}) };
 }
 
 /** Synchronous SQLite transactions make reservations and notification outbox durable together. */
@@ -121,7 +125,7 @@ export class OrderStore {
     this.expire();
     if (!this.config.enabled) return { enabled: false, version: this.config.version ?? 'unconfigured' };
     const c = this.config;
-    return { enabled: true, version: c.version, merchant: c.merchant, refundPolicy: resolveRefundPolicy(c.refundPolicy), pricing: c.pricing.kind === 'exact-xor' ? { kind: 'exact-xor', version: c.pricing.version } : c.pricing, sourceMetadata: c.pricing.kind === 'exact-xor' ? (c.sourceMetadata?.shipping ? { shipping: c.sourceMetadata.shipping } : undefined) : c.sourceMetadata, product: { id: c.product.id, name: c.product.name, grams: c.product.grams, packedGrams: c.product.packedGrams, packagingGrams: c.product.packagingGrams ?? 0, fulfillmentMode: c.fulfillmentMode ?? 'stocked', priceXor: merchantPrice(c, c.product), stockAvailable: this.available() }, shipping: c.shipping.filter((rate) => rate.countries.some((country) => this.shippingCountryAllowed(country))).map((rate) => ({ id: rate.id, label: rate.label, maxGrams: rate.maxGrams, reviewedAt: rate.reviewedAt, countries: rate.countries.filter((country) => this.shippingCountryAllowed(country)), priceXor: merchantPrice(c, rate, true) })), chain: { genesisHash: c.chain.genesisHash, assetId: c.chain.assetId, decimals: c.chain.decimals, denomination: c.chain.denomination, recipient: c.chain.recipient } };
+    return { enabled: true, version: c.version, personalUseOnly: c.personalUseOnly === true, merchant: c.merchant, refundPolicy: resolveRefundPolicy(c.refundPolicy), pricing: c.pricing.kind === 'exact-xor' ? { kind: 'exact-xor', version: c.pricing.version } : c.pricing, sourceMetadata: c.pricing.kind === 'exact-xor' ? (c.sourceMetadata?.shipping ? { shipping: c.sourceMetadata.shipping } : undefined) : c.sourceMetadata, product: { id: c.product.id, name: c.product.name, grams: c.product.grams, packedGrams: c.product.packedGrams, packagingGrams: c.product.packagingGrams ?? 0, fulfillmentMode: c.fulfillmentMode ?? 'stocked', priceXor: merchantPrice(c, c.product), stockAvailable: this.available() }, shipping: c.shipping.filter((rate) => rate.countries.some((country) => this.shippingCountryAllowed(country))).map((rate) => ({ id: rate.id, label: rate.label, maxGrams: rate.maxGrams, reviewedAt: rate.reviewedAt, countries: rate.countries.filter((country) => this.shippingCountryAllowed(country)), priceXor: merchantPrice(c, rate, true) })), chain: { genesisHash: c.chain.genesisHash, assetId: c.chain.assetId, decimals: c.chain.decimals, denomination: c.chain.denomination, recipient: c.chain.recipient } };
   }
   private available(): number | null { if (this.config.fulfillmentMode === 'on-demand') return null; const row = this.db.prepare('SELECT COALESCE(SUM(quantity),0) AS total FROM orders WHERE reserved=1').get() as { total: number }; return Math.max(0, this.config.product.stock! - row.total); }
   /** Save the private order before returning any signable payment request. */
@@ -137,6 +141,7 @@ export class OrderStore {
         const saved = this.decode(existing); return { ...this.view(existing, saved), recoveryToken: saved.recoveryToken };
       }
       const c = this.config;
+      if (c.personalUseOnly === true && input.personalUseAccepted !== true) throw new RelayError(400, 'Personal-use confirmation required');
       const rate = c.shipping.find((r) => r.id === input.shippingRateId && r.countries.includes(input.address.country) && r.maxGrams >= input.quantity * c.product.packedGrams + (c.product.packagingGrams ?? 0));
       if (input.productId !== c.product.id || !rate || !this.shippingCountryAllowed(input.address.country)) throw new RelayError(400, 'Shipping inquiry required for this order');
       if (this.available() !== null && this.available()! < input.quantity) throw new RelayError(409, 'Insufficient stock');
@@ -145,7 +150,7 @@ export class OrderStore {
       const id = randomUUID(); const token = randomBytes(32).toString('hex'); const expires = this.now() + 30 * 60_000;
       const request: PaymentRequest = { version: 1, merchant: { id: c.merchant.id, name: c.merchant.name }, chainGenesisHash: c.chain.genesisHash, assetId: c.chain.assetId, recipient: c.chain.recipient, payer: input.payer, amountCodec: (price * BigInt(input.quantity) + shipping).toString(), decimals: c.chain.decimals, denomination: c.chain.denomination, reference: `sp_${randomBytes(16).toString('hex')}`, expiresAt: new Date(expires).toISOString() };
       validatePaymentRequest(request);
-      const data: PrivateOrder = { input, paymentRequest: request, recoveryToken: token, receivedCodec: '0', refundedCodec: '0', refundPolicySnapshot: resolveRefundPolicy(c.refundPolicy), pricingSnapshot: structuredClone(c.pricing), shippingSnapshot: structuredClone(rate) };
+      const data: PrivateOrder = { input, paymentRequest: request, recoveryToken: token, receivedCodec: '0', refundedCodec: '0', refundPolicySnapshot: resolveRefundPolicy(c.refundPolicy), pricingSnapshot: structuredClone(c.pricing), shippingSnapshot: structuredClone(rate), ...(c.personalUseOnly === true ? { personalUseAttestation: { version: 1, personalUseOnly: true, accepted: true, acceptedAt: new Date(this.now()).toISOString() } as PersonalUseAttestation } : {}) };
       this.db.prepare('INSERT INTO orders VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)').run(id, request.reference, digest(token), digest(input.idempotencyKey), fingerprint, encrypt(data, this.key, id), 'unpaid', input.quantity, 1, expires, this.now(), this.now(), null, 'not_ready');
       return { ...this.view(this.row(id), data), recoveryToken: token };
     });
@@ -312,9 +317,9 @@ export class OrderStore {
     this.expire(); return (this.db.prepare("SELECT * FROM orders ORDER BY CASE WHEN status IN ('paid','shipping_review','refund_pending') THEN 0 ELSE 1 END, created ASC LIMIT 500").all() as unknown as Row[]).map((row) => { const data = this.decode(row); return { ...this.view(row, data), owner: row.owner, address: data.input.address, contact: data.input.contact, quantity: row.quantity, receivedCodec: data.receivedCodec, refundedCodec: data.refundedCodec, refundFeesCodec: data.refundFeesCodec ?? '0' }; });
   }
   /** Fetch one operator record directly even when a large queue is paginated by the caller. */
-  operatorOrder(id: string): ReturnType<OrderStore['list']>[number] & { refundHistory: RefundObligation[]; refundAmendment?: RefundAmendmentAudit; refundReconciliations: RefundReconciliationAudit[] } {
+  operatorOrder(id: string): ReturnType<OrderStore['list']>[number] & { refundHistory: RefundObligation[]; refundAmendment?: RefundAmendmentAudit; refundReconciliations: RefundReconciliationAudit[]; personalUseAttestation?: PersonalUseAttestation } {
     const row = this.row(id); const data = this.decode(row);
-    return { ...this.view(row, data), owner: row.owner, address: data.input.address, contact: data.input.contact, quantity: row.quantity, receivedCodec: data.receivedCodec, refundedCodec: data.refundedCodec, refundFeesCodec: data.refundFeesCodec ?? '0', refundHistory: structuredClone(data.refundHistory ?? []), refundReconciliations: structuredClone(data.refundReconciliations ?? []), ...(data.refundAmendment ? { refundAmendment: structuredClone(data.refundAmendment) } : {}) };
+    return { ...this.view(row, data), owner: row.owner, address: data.input.address, contact: data.input.contact, quantity: row.quantity, receivedCodec: data.receivedCodec, refundedCodec: data.refundedCodec, refundFeesCodec: data.refundFeesCodec ?? '0', refundHistory: structuredClone(data.refundHistory ?? []), refundReconciliations: structuredClone(data.refundReconciliations ?? []), ...(data.personalUseAttestation ? { personalUseAttestation: structuredClone(data.personalUseAttestation) } : {}), ...(data.refundAmendment ? { refundAmendment: structuredClone(data.refundAmendment) } : {}) };
   }
   /** Return private chain evidence for payment mismatch/refund reconciliation. */
   paymentEvidence(id: string): Array<FinalizedTransferEvidence | FinalizedManualRefundEvidence> {
