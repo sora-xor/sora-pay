@@ -14,14 +14,24 @@ export interface Contact { type: 'email' | 'telegram'; value: string }
 export interface CreateOrder { productId: string; quantity: number; shippingRateId: string; payer: string; address: Address; contact: Contact; idempotencyKey: string }
 /** Trusted chain quote for one exact refund call, never a browser-provided fee assertion. */
 export interface RefundFeeQuote { amountCodec: string; feeCodec: string; blockHash: string; blockNumber: string; expiresAt: string }
+/** A customer-agreed amount, distinct from any estimated or proven network fee. */
+export interface AgreedRefundDeduction { version: 1; amountCodec: string; consentId: string; recordedAt: string }
+/** Exact unsigned-obligation comparison and the operator's private record of explicit customer consent. */
+export interface RefundDeductionConsent { owner: string; expectedReference: string; expectedGrossAmountCodec: string; agreedDeductionCodec: string; consentId: string; consentNote: string }
 export interface RefundObligation {
   reference: string; recipient: string; grossAmountCodec: string; amountCodec?: string; feeExempt: boolean;
+  agreedDeduction?: AgreedRefundDeduction;
+  /** Retained after a proven cancellation so consent can never amend an already offered signature. */
+  signingStartedAt?: string;
   feeQuote?: RefundFeeQuote; actualFeeCodec?: string; deductedFeeCodec?: string; feeCorrectionCodec?: string;
   status: 'pending' | 'finalized'; receipt?: PaymentReceipt; attempt?: { token: string; submitted: boolean; transactionHash?: string };
 }
+/** Encrypted original terms and obligation remain available only through authenticated operator access. */
+export interface RefundAmendmentAudit extends RefundDeductionConsent { version: 1; recordedAt: string; originalPolicy: RefundPolicy; previousRefund: RefundObligation }
 interface PrivateOrder {
   input: CreateOrder; paymentRequest: PaymentRequest; recoveryToken: string; receivedCodec: string; refundedCodec: string;
   refundPolicySnapshot?: RefundPolicy; refundFeesCodec?: string; refundFeeCorrectionCodec?: string;
+  refundAgreedDeductionsCodec?: string; refundAmendment?: RefundAmendmentAudit;
   completedAt?: number;
   pricingSnapshot?: MerchantConfig['pricing']; shippingSnapshot?: MerchantConfig['shipping'][number]; fulfilledCodec?: string;
   receipt?: PaymentReceipt; tracking?: string; reviewReason?: string; refund?: RefundObligation;
@@ -30,7 +40,7 @@ interface PrivateOrder {
   attempt?: { token: string; submitted: boolean }; transactionHint?: string;
 }
 interface Row { id: string; public_reference: string; token_hash: string; idem_hash: string; fingerprint: string; data: string; status: OrderStatus; quantity: number; reserved: number; expires: number; created: number; updated: number; owner: string | null; notification: string }
-export interface OrderView { orderId: string; paymentRequest: PaymentRequest; refundPolicy: RefundPolicy; refundFeeCorrectionCodec: string; status: Exclude<OrderStatus, 'unpaid'> | 'awaiting_payment'; notificationStatus: string; paymentPending: boolean; receipt?: PaymentReceipt; tracking?: string; refund?: RefundObligation; reviewReason?: string }
+export interface OrderView { orderId: string; paymentRequest: PaymentRequest; refundPolicy: RefundPolicy; refundFeeCorrectionCodec: string; refundAgreedDeductionsCodec: string; status: Exclude<OrderStatus, 'unpaid'> | 'awaiting_payment'; notificationStatus: string; paymentPending: boolean; receipt?: PaymentReceipt; tracking?: string; refund?: RefundObligation; reviewReason?: string }
 export class RelayError extends Error { constructor(public status: number, message: string) { super(message); } }
 
 /** Validate private checkout input without ever reflecting rejected PII into errors. */
@@ -93,7 +103,7 @@ export class OrderStore {
     }
     return data;
   }
-  private outstanding(data: PrivateOrder): bigint { return BigInt(data.receivedCodec) - BigInt(data.refundedCodec) - BigInt(data.refundFeesCodec ?? '0') - BigInt(data.fulfilledCodec ?? '0'); }
+  private outstanding(data: PrivateOrder): bigint { return BigInt(data.receivedCodec) - BigInt(data.refundedCodec) - BigInt(data.refundFeesCodec ?? '0') - BigInt(data.refundAgreedDeductionsCodec ?? '0') - BigInt(data.fulfilledCodec ?? '0'); }
   private save(row: Row, data: PrivateOrder): void { this.db.prepare('UPDATE orders SET data=?,status=?,reserved=?,updated=?,owner=?,notification=? WHERE id=?').run(encrypt(data, this.key, row.id), row.status, row.reserved, this.now(), row.owner, row.notification, row.id); }
   private enqueue(row: Row, kind: string): void { this.db.prepare('INSERT INTO outbox(id,order_id,kind,next_attempt) VALUES(?,?,?,?)').run(randomUUID(), row.id, kind, this.now()); row.notification = 'pending'; }
   private expire(): void { this.db.prepare("UPDATE orders SET status='expired',reserved=0,updated=expires WHERE status='unpaid' AND expires<=?").run(this.now()); }
@@ -146,7 +156,7 @@ export class OrderStore {
   private view(row: Row, data: PrivateOrder): OrderView {
     const refund = data.refund ? structuredClone(data.refund) : undefined;
     if (refund) delete refund.attempt;
-    return { orderId: row.id, paymentRequest: data.paymentRequest, refundPolicy: resolveRefundPolicy(data.refundPolicySnapshot), refundFeeCorrectionCodec: data.refundFeeCorrectionCodec ?? '0', status: row.status === 'unpaid' ? 'awaiting_payment' : row.status, notificationStatus: row.notification, paymentPending: Boolean(data.attempt), receipt: data.receipt, tracking: data.tracking, refund, reviewReason: data.reviewReason };
+    return { orderId: row.id, paymentRequest: data.paymentRequest, refundPolicy: resolveRefundPolicy(data.refundPolicySnapshot), refundFeeCorrectionCodec: data.refundFeeCorrectionCodec ?? '0', refundAgreedDeductionsCodec: data.refundAgreedDeductionsCodec ?? '0', status: row.status === 'unpaid' ? 'awaiting_payment' : row.status, notificationStatus: row.notification, paymentPending: Boolean(data.attempt), receipt: data.receipt, tracking: data.tracking, refund, reviewReason: data.reviewReason };
   }
   /** Recovery requires a high-entropy bearer token, never an identifier alone. */
   get(id: string, token: string): OrderView { this.expire(); const row = this.authorized(id, token); return this.view(row, this.decode(row)); }
@@ -196,8 +206,17 @@ export class OrderStore {
       const request = { ...data.paymentRequest, payer: data.paymentRequest.recipient, recipient: data.paymentRequest.payer, amountCodec: refund.amountCodec, reference: refund.reference };
       let receipt: PaymentReceipt;
       try { receipt = verifyFinalizedPayment(request, { ...evidence, payer: accountAddress(evidence.payer), recipient: accountAddress(evidence.recipient) }); } catch { return false; }
-      let deducted = 0n; let correction = 0n;
-      if (!refund.feeExempt) {
+      let deducted = 0n; let correction = 0n; let agreed = 0n;
+      if (refund.agreedDeduction) {
+        const amendment = data.refundAmendment;
+        if (!amendment || amendment.expectedReference !== refund.reference || amendment.consentId !== refund.agreedDeduction.consentId || amendment.agreedDeductionCodec !== refund.agreedDeduction.amountCodec || !refund.feeExempt || refund.feeQuote) return false;
+        agreed = codecAmount(refund.agreedDeduction.amountCodec, false);
+        if (BigInt(refund.amountCodec) + agreed !== BigInt(refund.grossAmountCodec)) return false;
+        // The agreed waiver settles only on an exact finalized transfer. Actual fees are evidence,
+        // never substituted for the agreed amount or charged again to the customer.
+        const fee = evidence.networkFee;
+        if (fee && accountAddress(fee.payer) === request.payer && fee.assetId === request.assetId) refund.actualFeeCodec = codecAmount(fee.amountCodec).toString();
+      } else if (!refund.feeExempt) {
         if (!refund.feeQuote) return false;
         const quoted = BigInt(refund.feeQuote.feeCodec);
         const fee = evidence.networkFee;
@@ -218,6 +237,7 @@ export class OrderStore {
       refund.status = 'finalized'; refund.receipt = receipt; refund.deductedFeeCodec = deducted.toString(); refund.feeCorrectionCodec = correction.toString();
       data.refundedCodec = (BigInt(data.refundedCodec) + BigInt(refund.amountCodec)).toString();
       data.refundFeesCodec = (BigInt(data.refundFeesCodec ?? '0') + deducted).toString();
+      if (agreed > 0n) data.refundAgreedDeductionsCodec = (BigInt(data.refundAgreedDeductionsCodec ?? '0') + agreed).toString();
       row.status = this.outstanding(data) > 0n ? 'shipping_review' : 'refunded';
       if (row.status === 'refunded') { data.completedAt = this.now(); delete data.reviewReason; }
       if (!data.tracking) row.reserved = 0;
@@ -230,9 +250,9 @@ export class OrderStore {
     this.expire(); return (this.db.prepare("SELECT * FROM orders ORDER BY CASE WHEN status IN ('paid','shipping_review','refund_pending') THEN 0 ELSE 1 END, created ASC LIMIT 500").all() as unknown as Row[]).map((row) => { const data = this.decode(row); return { ...this.view(row, data), owner: row.owner, address: data.input.address, contact: data.input.contact, quantity: row.quantity, receivedCodec: data.receivedCodec, refundedCodec: data.refundedCodec, refundFeesCodec: data.refundFeesCodec ?? '0' }; });
   }
   /** Fetch one operator record directly even when a large queue is paginated by the caller. */
-  operatorOrder(id: string): ReturnType<OrderStore['list']>[number] & { refundHistory: RefundObligation[] } {
+  operatorOrder(id: string): ReturnType<OrderStore['list']>[number] & { refundHistory: RefundObligation[]; refundAmendment?: RefundAmendmentAudit } {
     const row = this.row(id); const data = this.decode(row);
-    return { ...this.view(row, data), owner: row.owner, address: data.input.address, contact: data.input.contact, quantity: row.quantity, receivedCodec: data.receivedCodec, refundedCodec: data.refundedCodec, refundFeesCodec: data.refundFeesCodec ?? '0', refundHistory: structuredClone(data.refundHistory ?? []) };
+    return { ...this.view(row, data), owner: row.owner, address: data.input.address, contact: data.input.contact, quantity: row.quantity, receivedCodec: data.receivedCodec, refundedCodec: data.refundedCodec, refundFeesCodec: data.refundFeesCodec ?? '0', refundHistory: structuredClone(data.refundHistory ?? []), ...(data.refundAmendment ? { refundAmendment: structuredClone(data.refundAmendment) } : {}) };
   }
   /** Return private chain evidence for payment mismatch/refund reconciliation. */
   paymentEvidence(id: string): FinalizedTransferEvidence[] {
@@ -277,6 +297,38 @@ export class OrderStore {
       row.status = 'refund_pending'; this.enqueue(row, 'refund_pending'); this.save(row, data); return data.refund;
     });
   }
+  /** Apply one explicitly consented fixed deduction to an unsigned legacy refund, preserving its original policy. */
+  agreeRefundDeduction(id: string, consent: RefundDeductionConsent): RefundObligation {
+    const fields = ['owner', 'expectedReference', 'expectedGrossAmountCodec', 'agreedDeductionCodec', 'consentId', 'consentNote'];
+    if (!consent || typeof consent !== 'object' || Object.keys(consent).length !== fields.length || fields.some((field) => !Object.hasOwn(consent, field)) ||
+      typeof consent.owner !== 'string' || !/^[a-zA-Z0-9_-]{1,64}$/.test(consent.owner) || typeof consent.expectedReference !== 'string' || !/^sp_[a-f0-9]{32}$/.test(consent.expectedReference) ||
+      typeof consent.consentId !== 'string' || !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(consent.consentId) ||
+      typeof consent.consentNote !== 'string' || !consent.consentNote.trim() || consent.consentNote.length > 2000 || /[\x00-\x1f\x7f]/.test(consent.consentNote)) throw new RelayError(400, 'Invalid refund deduction consent');
+    let gross: bigint; let deduction: bigint;
+    try { gross = codecAmount(consent.expectedGrossAmountCodec, false); deduction = codecAmount(consent.agreedDeductionCodec, false); }
+    catch { throw new RelayError(400, 'Invalid refund deduction amount'); }
+    if (deduction >= gross) throw new RelayError(400, 'Agreed deduction must leave a positive refund');
+    return this.atomic(() => {
+      const row = this.row(id); const data = this.decode(row);
+      if (row.owner !== consent.owner) throw new RelayError(409, 'Order is not assigned to this operator');
+      if (data.refundAmendment) {
+        if (fields.some((field) => data.refundAmendment![field as keyof RefundDeductionConsent] !== consent[field as keyof RefundDeductionConsent])) throw new RelayError(409, 'Refund consent already recorded');
+        const prior = [data.refund, ...(data.refundHistory ?? [])].find((refund) => refund?.reference === consent.expectedReference && refund.agreedDeduction?.consentId === consent.consentId);
+        if (!prior) throw new RelayError(409, 'Amended refund is unavailable');
+        const result = structuredClone(prior); delete result.attempt; return result;
+      }
+      const refund = data.refund;
+      if (row.status !== 'refund_pending' || !refund || refund.status !== 'pending' || refund.reference !== consent.expectedReference || refund.grossAmountCodec !== consent.expectedGrossAmountCodec ||
+        refund.amountCodec !== refund.grossAmountCodec || !refund.feeExempt || refund.attempt || refund.signingStartedAt || refund.receipt || refund.feeQuote || refund.agreedDeduction || refund.actualFeeCodec !== undefined || refund.deductedFeeCodec !== undefined ||
+        resolveRefundPolicy(data.refundPolicySnapshot).mode !== 'full' || refund.recipient !== data.paymentRequest.payer || this.outstanding(data) !== gross || BigInt(data.refundFeeCorrectionCodec ?? '0') !== 0n || data.tracking) throw new RelayError(409, 'Unsigned full refund no longer matches consent');
+      const recordedAt = new Date(this.now()).toISOString();
+      data.refundAmendment = { ...consent, version: 1, recordedAt, originalPolicy: resolveRefundPolicy(data.refundPolicySnapshot), previousRefund: structuredClone(refund) };
+      refund.agreedDeduction = { version: 1, amountCodec: deduction.toString(), consentId: consent.consentId, recordedAt };
+      refund.amountCodec = (gross - deduction).toString();
+      this.enqueue(row, 'refund_amended'); this.save(row, data);
+      return structuredClone(refund);
+    });
+  }
   /** Save a short-lived authoritative quote only while no refund signing attempt exists. */
   quoteRefund(id: string, owner: string, quote: RefundFeeQuote): RefundObligation {
     return this.atomic(() => {
@@ -295,7 +347,7 @@ export class OrderStore {
       const row = this.row(id); const data = this.decode(row); const refund = data.refund;
       if (row.owner !== owner || row.status !== 'refund_pending' || !refund || refund.status !== 'pending' || refund.attempt) throw new RelayError(409, 'Refund signing is already pending or unavailable');
       if (refund.amountCodec === undefined || (!refund.feeExempt && (!refund.feeQuote || Date.parse(refund.feeQuote.expiresAt) <= this.now()))) throw new RelayError(409, 'A current refund fee quote is required');
-      const attemptToken = randomBytes(32).toString('hex'); refund.attempt = { token: attemptToken, submitted: false }; this.save(row, data); return { attemptToken };
+      const attemptToken = randomBytes(32).toString('hex'); refund.signingStartedAt ??= new Date(this.now()).toISOString(); refund.attempt = { token: attemptToken, submitted: false }; this.save(row, data); return { attemptToken };
     });
   }
   /** Store outbound transaction hints without treating browser/operator assertions as finality. */

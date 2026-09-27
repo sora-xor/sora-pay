@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { fromCodec } from '../core/index.js';
 import type { OrderStore } from './store.js';
 export type NotificationJob = NonNullable<ReturnType<OrderStore['pendingNotification']>>;
 export interface NotificationDelivery { send(job: NotificationJob): Promise<void> }
@@ -6,7 +7,15 @@ export interface NotificationDelivery { send(job: NotificationJob): Promise<void
 /** Limit volunteer alerts to private destinations; no customer information enters URL parameters. */
 function message(job: NotificationJob): string {
   const { order } = job;
-  return [`Sora Pay ${job.kind}`, `Order: ${job.orderId}`, `Quantity: ${order.quantity}`, `Status: ${order.status}`, `Owner: ${order.owner ?? 'unassigned'}`, `Payment: ${order.receivedCodec} codec XOR`, `Address: ${JSON.stringify(order.address)}`, `Contact: ${order.contact.type} ${order.contact.value}`, `Tracking: ${order.tracking ?? '-'}`, 'Claim the order in the private operator queue before fulfillment.'].join('\n');
+  const refund = order.refund;
+  const amendment = refund?.agreedDeduction ? [
+    `Original refund policy: ${order.refundPolicy.mode} (version ${order.refundPolicy.version}), unchanged`,
+    `Refund gross: ${fromCodec(refund.grossAmountCodec, order.paymentRequest.decimals)} XOR`,
+    `Agreed deduction (not a network fee): ${fromCodec(refund.agreedDeduction.amountCodec, order.paymentRequest.decimals)} XOR`,
+    `Refund ${refund.status === 'finalized' ? 'finalized' : 'pending, not confirmed sent'}: ${fromCodec(refund.amountCodec!, order.paymentRequest.decimals)} XOR`,
+    `Actual SORA network fee: ${refund.actualFeeCodec === undefined ? 'not verified' : fromCodec(refund.actualFeeCodec, order.paymentRequest.decimals) + ' XOR (paid by store)'}`,
+  ] : [];
+  return [`Sora Pay ${job.kind}`, `Order: ${job.orderId}`, `Quantity: ${order.quantity}`, `Status: ${order.status}`, `Owner: ${order.owner ?? 'unassigned'}`, `Payment: ${order.receivedCodec} codec XOR`, ...amendment, `Address: ${JSON.stringify(order.address)}`, `Contact: ${order.contact.type} ${order.contact.value}`, `Tracking: ${order.tracking ?? '-'}`, 'Claim the order in the private operator queue before fulfillment.'].join('\n');
 }
 
 /** Telegram bot credentials are server-only; destination must be an approved private chat. */
