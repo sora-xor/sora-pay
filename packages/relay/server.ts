@@ -1,8 +1,9 @@
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from 'node:http';
 import { isIP } from 'node:net';
 import { digest, tokenMatches } from './crypto.js';
-import { RelayError, type CreateOrder, type OrderStore, type RefundFeeQuote, type RefundObligation, type RefundDeductionConsent } from './store.js';
-import type { PaymentRequest } from '../core/index.js';
+import { RelayError, type CreateOrder, type OrderStore, type RefundFeeQuote, type RefundObligation, type RefundDeductionConsent, type RefundReconciliation } from './store.js';
+import type { FinalizedRefundLocator } from './chain.js';
+import type { PaymentRequest, FinalizedManualRefundEvidence } from '../core/index.js';
 
 /** Bounded JSON parser protects the public relay from oversized private payloads. */
 async function body(request: IncomingMessage): Promise<Record<string, unknown>> {
@@ -36,7 +37,7 @@ export function relayClientAddress(peer: string | undefined, header: string | st
 }
 
 /** Bind behind the approved TLS proxy. It must disable request-body and authorization logging. */
-export function createRelayServer(store: OrderStore, options: { operatorToken: string; ready: () => boolean; admissionReady?: () => boolean; resetAdmission?: () => void; trustLoopbackProxy?: boolean; quoteRefund?: (request: PaymentRequest, grossAmountCodec: string) => Promise<RefundFeeQuote> }): Server {
+export function createRelayServer(store: OrderStore, options: { operatorToken: string; ready: () => boolean; admissionReady?: () => boolean; resetAdmission?: () => void; trustLoopbackProxy?: boolean; quoteRefund?: (request: PaymentRequest, grossAmountCodec: string) => Promise<RefundFeeQuote>; readRefundTransfer?: (locator: FinalizedRefundLocator) => Promise<FinalizedManualRefundEvidence> }): Server {
   if (options.operatorToken.length < 32) throw new Error('A strong operator token is required');
   const operatorDigest = digest(options.operatorToken);
   const attempts = new Map<string, { count: number; until: number }>();
@@ -98,11 +99,23 @@ export function createRelayServer(store: OrderStore, options: { operatorToken: s
         if (detail && request.method === 'GET') { send(response, 200, store.operatorOrder(detail[1]!)); return; }
         const evidence = /^\/v1\/operator\/orders\/([a-f0-9-]{36})\/evidence$/.exec(url.pathname);
         if (evidence && request.method === 'GET') { send(response, 200, { payments: store.paymentEvidence(evidence[1]!) }); return; }
-        const action = /^\/v1\/operator\/orders\/([a-f0-9-]{36})\/(claim|ship|refund|approve|refund-attempt|refund-transaction|refund-cancel|refund-agreed-deduction)$/.exec(url.pathname);
+        const action = /^\/v1\/operator\/orders\/([a-f0-9-]{36})\/(claim|ship|refund|approve|refund-attempt|refund-transaction|refund-cancel|refund-agreed-deduction|refund-reconcile)$/.exec(url.pathname);
         if (action && request.method === 'POST') {
           const input = await body(request); const id = action[1]!; const owner = input.owner as string;
           if (action[2] === 'claim') store.claim(id, owner);
           if (action[2] === 'ship') store.ship(id, owner, input.tracking as string, input.shippingReviewed as boolean);
+          if (action[2] === 'refund-reconcile') {
+            const reconciliation = input as unknown as RefundReconciliation;
+            const existing = store.checkRefundReconciliation(id, reconciliation);
+            if (existing) { send(response, 200, existing); return; }
+            if (!options.readRefundTransfer) throw new RelayError(503, 'Refund chain verification temporarily unavailable');
+            const locator = { blockNumber: reconciliation.blockNumber, blockHash: reconciliation.blockHash, transactionHash: reconciliation.transactionHash, eventIndex: reconciliation.eventIndex };
+            let timeout: ReturnType<typeof setTimeout> | undefined; let transfer: FinalizedManualRefundEvidence;
+            try { transfer = await Promise.race([options.readRefundTransfer(locator), new Promise<never>((_resolve, reject) => { timeout = setTimeout(() => reject(new Error('timeout')), 12_000); })]); }
+            catch { throw new RelayError(503, 'Refund chain verification temporarily unavailable'); }
+            finally { clearTimeout(timeout); }
+            send(response, 200, store.reconcileRefund(id, reconciliation, transfer)); return;
+          }
           if (action[2] === 'refund-agreed-deduction') { send(response, 200, store.agreeRefundDeduction(id, input as unknown as RefundDeductionConsent)); return; }
           if (action[2] === 'refund') {
             let refund = store.refund(id, owner);

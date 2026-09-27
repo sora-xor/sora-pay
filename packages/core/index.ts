@@ -78,6 +78,28 @@ export interface PaymentReceipt {
   evidence: FinalizedTransferEvidence;
 }
 
+/** A direct assets.transfer has no on-chain store reference; preserve that fact in its evidence. */
+export interface FinalizedManualRefundEvidence extends Omit<FinalizedTransferEvidence, 'reference'> {
+  reference: null;
+  transferKind: 'assets-transfer';
+}
+
+/** The authenticated relay binds trusted chain evidence to an existing refund obligation. */
+export interface ManualRefundReceipt {
+  status: 'finalized';
+  request: PaymentRequest;
+  evidence: FinalizedManualRefundEvidence;
+  reconciliation: {
+    version: 1;
+    kind: 'operator-bound';
+    expectedReference: string;
+    recordedAt: string;
+  };
+}
+
+/** Automatic referenced refunds and explicitly reconciled direct transfers remain distinguishable. */
+export type RefundReceipt = PaymentReceipt | ManualRefundReceipt;
+
 /** Small stable error codes are safe for translated UI; errors contain no private order information. */
 export class PaymentError extends Error {
   readonly code: string;
@@ -207,8 +229,62 @@ export function verifyFinalizedPayment(request: PaymentRequest, evidence: Finali
   return { status: 'finalized', request: structuredClone(request), evidence: structuredClone(evidence) };
 }
 
+/** Narrow parsed receipt objects without accepting arrays or reflecting their fields in errors. */
+function receiptRecord(value: unknown, code: string): Record<string, unknown> {
+  ensure(value != null && typeof value === 'object' && !Array.isArray(value), code);
+  return value as Record<string, unknown>;
+}
+
+/**
+ * Verify a refund receipt against independently expected intent from the saved order.
+ * An operator binding is an assertion by the trusted merchant relay, not a chain reference
+ * or cryptographic proof of authorization. Never use browser-supplied evidence to create it.
+ */
+export function verifyFinalizedRefund(request: PaymentRequest, value: unknown): RefundReceipt {
+  validatePaymentRequest(request);
+  const receipt = receiptRecord(value, 'invalid_refund_receipt');
+  ensure(receipt.status === 'finalized', 'payment_not_finalized');
+  const embedded = receiptRecord(receipt.request, 'invalid_request');
+  validatePaymentRequest(embedded as unknown as PaymentRequest);
+  const merchant = receiptRecord(embedded.merchant, 'invalid_merchant');
+  ensure(merchant.id === request.merchant.id && merchant.name === request.merchant.name, 'refund_mismatch_merchant');
+  for (const key of ['version', 'chainGenesisHash', 'assetId', 'payer', 'recipient', 'amountCodec', 'decimals', 'denomination', 'reference', 'expiresAt'] as const) {
+    ensure(embedded[key] === request[key], `refund_mismatch_${key}`);
+  }
+  const evidence = receiptRecord(receipt.evidence, 'invalid_evidence');
+  if (!('reconciliation' in receipt)) {
+    ensure(!('transferKind' in evidence), 'invalid_refund_binding');
+    return verifyFinalizedPayment(request, evidence as unknown as FinalizedTransferEvidence);
+  }
+  const binding = receiptRecord(receipt.reconciliation, 'invalid_refund_binding');
+  ensure(binding.version === 1 && binding.kind === 'operator-bound' && binding.expectedReference === request.reference, 'invalid_refund_binding');
+  ensure(isTimestamp(binding.recordedAt as string), 'invalid_reconciliation_at');
+  ensure(evidence.reference === null && evidence.transferKind === 'assets-transfer', 'invalid_refund_binding');
+  ensure(evidence.finalized === true && evidence.successful === true, 'payment_not_finalized');
+  ensure(typeof evidence.transactionHash === 'string' && HASH.test(evidence.transactionHash) && typeof evidence.blockHash === 'string' && HASH.test(evidence.blockHash), 'invalid_transaction');
+  ensure(typeof evidence.blockNumber === 'string' && /^(0|[1-9][0-9]{0,19})$/.test(evidence.blockNumber), 'invalid_block');
+  ensure(Number.isSafeInteger(evidence.eventIndex) && (evidence.eventIndex as number) >= 0, 'invalid_event');
+  ensure(isTimestamp(evidence.finalizedAt as string), 'invalid_finalized_at');
+  ensure(Date.parse(binding.recordedAt as string) >= Date.parse(evidence.finalizedAt as string), 'invalid_reconciliation_at');
+  codecAmount(evidence.amountCodec as string, false);
+  for (const key of ['chainGenesisHash', 'assetId', 'payer', 'recipient', 'amountCodec'] as const) {
+    ensure(evidence[key] === request[key], `payment_mismatch_${key}`);
+  }
+  if (evidence.networkFee !== undefined) {
+    const fee = receiptRecord(evidence.networkFee, 'invalid_network_fee');
+    ensure(fee.payer === request.payer && fee.assetId === NATIVE_XOR_ASSET_ID, 'invalid_network_fee');
+    codecAmount(fee.amountCodec as string);
+    ensure(Number.isSafeInteger(fee.eventIndex) && (fee.eventIndex as number) >= 0 && fee.eventIndex !== evidence.eventIndex, 'invalid_network_fee');
+  }
+  return {
+    status: 'finalized', request: structuredClone(request),
+    evidence: structuredClone(evidence) as unknown as FinalizedManualRefundEvidence,
+    reconciliation: { version: 1, kind: 'operator-bound', expectedReference: request.reference, recordedAt: binding.recordedAt as string },
+  };
+}
+
 /** Stable payment-event identity for durable database uniqueness constraints. */
-export function paymentEventId(evidence: FinalizedTransferEvidence): string {
+export function paymentEventId(evidence: FinalizedTransferEvidence | FinalizedManualRefundEvidence): string {
   ensure(HASH.test(evidence.chainGenesisHash) && HASH.test(evidence.blockHash), 'invalid_event');
   ensure(Number.isSafeInteger(evidence.eventIndex) && evidence.eventIndex >= 0, 'invalid_event');
   return `${evidence.chainGenesisHash}:${evidence.blockHash}:${evidence.eventIndex}`;

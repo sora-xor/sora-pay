@@ -1,11 +1,12 @@
 import { DatabaseSync } from 'node:sqlite';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { chmodSync } from 'node:fs';
-import type { PaymentRequest, PaymentReceipt, FinalizedTransferEvidence } from '../core/index.js';
-import { codecAmount, verifyFinalizedPayment, validatePaymentRequest } from '../core/index.js';
+import type { PaymentRequest, PaymentReceipt, FinalizedTransferEvidence, FinalizedManualRefundEvidence, RefundReceipt } from '../core/index.js';
+import { codecAmount, verifyFinalizedPayment, verifyFinalizedRefund, validatePaymentRequest } from '../core/index.js';
 import { accountAddress, merchantPrice, resolveRefundPolicy, type MerchantConfig, type RefundPolicy } from './config.js';
 import { decrypt, digest, encrypt, tokenMatches } from './crypto.js';
 import { xorToCodec } from './pricing.js';
+import type { FinalizedRefundLocator } from './chain.js';
 
 export type OrderStatus = 'unpaid' | 'expired' | 'paid' | 'shipping_review' | 'shipped' | 'refund_pending' | 'refunded';
 /** Postal code may be omitted at checkout; stored orders normalize it to an empty string. */
@@ -24,14 +25,18 @@ export interface RefundObligation {
   /** Retained after a proven cancellation so consent can never amend an already offered signature. */
   signingStartedAt?: string;
   feeQuote?: RefundFeeQuote; actualFeeCodec?: string; deductedFeeCodec?: string; feeCorrectionCodec?: string;
-  status: 'pending' | 'finalized'; receipt?: PaymentReceipt; attempt?: { token: string; submitted: boolean; transactionHash?: string };
+  status: 'pending' | 'finalized'; receipt?: RefundReceipt; attempt?: { token: string; submitted: boolean; transactionHash?: string };
 }
 /** Encrypted original terms and obligation remain available only through authenticated operator access. */
 export interface RefundAmendmentAudit extends RefundDeductionConsent { version: 1; recordedAt: string; originalPolicy: RefundPolicy; previousRefund: RefundObligation }
+/** Operator CAS and existing signing lease; no caller-supplied chain evidence is permitted. */
+export interface RefundReconciliation extends FinalizedRefundLocator { owner: string; attemptToken: string; expectedReference: string; expectedGrossAmountCodec: string; expectedAmountCodec: string }
+interface RefundReconciliationAudit extends Omit<RefundReconciliation, 'attemptToken'> { version: 1; recordedAt: string; attemptTokenHash: string }
 interface PrivateOrder {
   input: CreateOrder; paymentRequest: PaymentRequest; recoveryToken: string; receivedCodec: string; refundedCodec: string;
   refundPolicySnapshot?: RefundPolicy; refundFeesCodec?: string; refundFeeCorrectionCodec?: string;
   refundAgreedDeductionsCodec?: string; refundAmendment?: RefundAmendmentAudit;
+  refundReconciliations?: RefundReconciliationAudit[];
   completedAt?: number;
   pricingSnapshot?: MerchantConfig['pricing']; shippingSnapshot?: MerchantConfig['shipping'][number]; fulfilledCodec?: string;
   receipt?: PaymentReceipt; tracking?: string; reviewReason?: string; refund?: RefundObligation;
@@ -206,59 +211,116 @@ export class OrderStore {
       const request = { ...data.paymentRequest, payer: data.paymentRequest.recipient, recipient: data.paymentRequest.payer, amountCodec: refund.amountCodec, reference: refund.reference };
       let receipt: PaymentReceipt;
       try { receipt = verifyFinalizedPayment(request, { ...evidence, payer: accountAddress(evidence.payer), recipient: accountAddress(evidence.recipient) }); } catch { return false; }
-      let deducted = 0n; let correction = 0n; let agreed = 0n;
-      if (refund.agreedDeduction) {
-        const amendment = data.refundAmendment;
-        if (!amendment || amendment.expectedReference !== refund.reference || amendment.consentId !== refund.agreedDeduction.consentId || amendment.agreedDeductionCodec !== refund.agreedDeduction.amountCodec || !refund.feeExempt || refund.feeQuote) return false;
-        agreed = codecAmount(refund.agreedDeduction.amountCodec, false);
-        if (BigInt(refund.amountCodec) + agreed !== BigInt(refund.grossAmountCodec)) return false;
-        // The agreed waiver settles only on an exact finalized transfer. Actual fees are evidence,
-        // never substituted for the agreed amount or charged again to the customer.
-        const fee = evidence.networkFee;
-        if (fee && accountAddress(fee.payer) === request.payer && fee.assetId === request.assetId) refund.actualFeeCodec = codecAmount(fee.amountCodec).toString();
-      } else if (!refund.feeExempt) {
-        if (!refund.feeQuote) return false;
-        const quoted = BigInt(refund.feeQuote.feeCodec);
-        const fee = evidence.networkFee;
-        if (fee && accountAddress(fee.payer) === request.payer && fee.assetId === request.assetId) {
-          const actual = codecAmount(fee.amountCodec); refund.actualFeeCodec = actual.toString();
-          deducted = actual < quoted ? actual : quoted;
-        }
-        // An unproven fee is not charged to the customer. Preserve the observed transfer
-        // and make the undeducted remainder a separate, fee-exempt liability.
-        correction = quoted - deducted;
-        data.refundFeeCorrectionCodec = (BigInt(data.refundFeeCorrectionCodec ?? '0') + correction).toString();
-        if (correction > 0n) data.reviewReason = refund.actualFeeCodec === undefined ? 'refund_fee_evidence_missing' : 'refund_fee_correction';
-      } else if (resolveRefundPolicy(data.refundPolicySnapshot).mode === 'net-network-fee') {
-        const remaining = BigInt(data.refundFeeCorrectionCodec ?? '0') - BigInt(refund.grossAmountCodec);
-        if (remaining < 0n) throw new Error('Invalid refund correction accounting');
-        data.refundFeeCorrectionCodec = remaining.toString();
-      }
-      refund.status = 'finalized'; refund.receipt = receipt; refund.deductedFeeCodec = deducted.toString(); refund.feeCorrectionCodec = correction.toString();
-      data.refundedCodec = (BigInt(data.refundedCodec) + BigInt(refund.amountCodec)).toString();
-      data.refundFeesCodec = (BigInt(data.refundFeesCodec ?? '0') + deducted).toString();
-      if (agreed > 0n) data.refundAgreedDeductionsCodec = (BigInt(data.refundAgreedDeductionsCodec ?? '0') + agreed).toString();
-      row.status = this.outstanding(data) > 0n ? 'shipping_review' : 'refunded';
-      if (row.status === 'refunded') { data.completedAt = this.now(); delete data.reviewReason; }
-      if (!data.tracking) row.reserved = 0;
-      this.db.prepare('INSERT INTO payments VALUES(?,?,?,?)').run(eventId, row.id, 'refund', encrypt(evidence, this.key, eventId)); this.enqueue(row, row.status === 'refunded' ? 'refunded' : 'shipping_review'); this.save(row, data); return true;
+      return this.settleRefund(row, data, refund, receipt, eventId, evidence);
     }
     return false;
   }
+  /** Both automatic and explicitly bound refunds use the same atomic liability/outbox accounting. */
+  private settleRefund(row: Row, data: PrivateOrder, refund: RefundObligation, receipt: RefundReceipt, eventId: string, evidence: FinalizedTransferEvidence | FinalizedManualRefundEvidence): boolean {
+    const request = receipt.request; const amount = refund.amountCodec;
+    if (amount === undefined) return false;
+    let deducted = 0n; let correction = 0n; let agreed = 0n;
+    if (refund.agreedDeduction) {
+      const amendment = data.refundAmendment;
+      if (!amendment || amendment.expectedReference !== refund.reference || amendment.consentId !== refund.agreedDeduction.consentId || amendment.agreedDeductionCodec !== refund.agreedDeduction.amountCodec || !refund.feeExempt || refund.feeQuote) return false;
+      agreed = codecAmount(refund.agreedDeduction.amountCodec, false);
+      if (BigInt(amount) + agreed !== BigInt(refund.grossAmountCodec)) return false;
+      // The agreed waiver settles only on an exact finalized transfer. Actual fees are evidence,
+      // never substituted for the agreed amount or charged again to the customer.
+      const fee = evidence.networkFee;
+      if (fee && accountAddress(fee.payer) === request.payer && fee.assetId === request.assetId) refund.actualFeeCodec = codecAmount(fee.amountCodec).toString();
+    } else if (!refund.feeExempt) {
+      if (!refund.feeQuote) return false;
+      const quoted = BigInt(refund.feeQuote.feeCodec);
+      const fee = evidence.networkFee;
+      if (fee && accountAddress(fee.payer) === request.payer && fee.assetId === request.assetId) {
+        const actual = codecAmount(fee.amountCodec); refund.actualFeeCodec = actual.toString();
+        deducted = actual < quoted ? actual : quoted;
+      }
+      // An unproven fee is not charged to the customer. Preserve the observed transfer
+      // and make the undeducted remainder a separate, fee-exempt liability.
+      correction = quoted - deducted;
+      data.refundFeeCorrectionCodec = (BigInt(data.refundFeeCorrectionCodec ?? '0') + correction).toString();
+      if (correction > 0n) data.reviewReason = refund.actualFeeCodec === undefined ? 'refund_fee_evidence_missing' : 'refund_fee_correction';
+    } else if (resolveRefundPolicy(data.refundPolicySnapshot).mode === 'net-network-fee') {
+      const remaining = BigInt(data.refundFeeCorrectionCodec ?? '0') - BigInt(refund.grossAmountCodec);
+      if (remaining < 0n) throw new Error('Invalid refund correction accounting');
+      data.refundFeeCorrectionCodec = remaining.toString();
+    }
+    refund.status = 'finalized'; refund.receipt = receipt; refund.deductedFeeCodec = deducted.toString(); refund.feeCorrectionCodec = correction.toString();
+    data.refundedCodec = (BigInt(data.refundedCodec) + BigInt(amount)).toString();
+    data.refundFeesCodec = (BigInt(data.refundFeesCodec ?? '0') + deducted).toString();
+    if (agreed > 0n) data.refundAgreedDeductionsCodec = (BigInt(data.refundAgreedDeductionsCodec ?? '0') + agreed).toString();
+    row.status = this.outstanding(data) > 0n ? 'shipping_review' : 'refunded';
+    if (row.status === 'refunded') { data.completedAt = this.now(); delete data.reviewReason; }
+    if (!data.tracking) row.reserved = 0;
+    this.db.prepare('INSERT INTO payments VALUES(?,?,?,?)').run(eventId, row.id, 'refund', encrypt(evidence, this.key, eventId)); this.enqueue(row, row.status === 'refunded' ? 'refunded' : 'shipping_review'); this.save(row, data); return true;
+  }
+
+  /** Strict owner/lease/CAS validation happens before RPC work and again inside the settlement transaction. */
+  checkRefundReconciliation(id: string, input: RefundReconciliation): RefundObligation | undefined {
+    const fields = ['owner', 'attemptToken', 'expectedReference', 'expectedGrossAmountCodec', 'expectedAmountCodec', 'blockNumber', 'blockHash', 'transactionHash', 'eventIndex'];
+    if (!input || typeof input !== 'object' || Object.keys(input).length !== fields.length || fields.some((field) => !Object.hasOwn(input, field)) || typeof input.owner !== 'string' || !/^[a-zA-Z0-9_-]{1,64}$/.test(input.owner) || typeof input.attemptToken !== 'string' || !/^[a-f0-9]{64}$/.test(input.attemptToken) || typeof input.expectedReference !== 'string' || !/^sp_[a-f0-9]{32}$/.test(input.expectedReference) || typeof input.blockNumber !== 'string' || !/^[1-9][0-9]{0,15}$/.test(input.blockNumber) || !Number.isSafeInteger(Number(input.blockNumber)) || typeof input.blockHash !== 'string' || !/^0x[a-f0-9]{64}$/.test(input.blockHash) || typeof input.transactionHash !== 'string' || !/^0x[a-f0-9]{64}$/.test(input.transactionHash) || !Number.isSafeInteger(input.eventIndex) || input.eventIndex < 0) throw new RelayError(400, 'Invalid refund reconciliation');
+    try { codecAmount(input.expectedGrossAmountCodec, false); codecAmount(input.expectedAmountCodec, false); } catch { throw new RelayError(400, 'Invalid refund reconciliation amount'); }
+    const row = this.row(id); const data = this.decode(row);
+    if (row.owner !== input.owner) throw new RelayError(409, 'Refund is not assigned to this operator');
+    const { attemptToken, ...binding } = input;
+    const prior = data.refundReconciliations?.find((audit) => audit.blockHash === input.blockHash && audit.eventIndex === input.eventIndex);
+    if (prior) {
+      if (prior.attemptTokenHash !== digest(attemptToken) || Object.entries(binding).some(([name, value]) => prior[name as keyof RefundReconciliationAudit] !== value)) throw new RelayError(409, 'Refund reconciliation already recorded');
+      const saved = [data.refund, ...(data.refundHistory ?? [])].find((refund) => refund?.reference === input.expectedReference && refund.receipt && 'reconciliation' in refund.receipt && refund.receipt.evidence.blockHash === input.blockHash && refund.receipt.evidence.eventIndex === input.eventIndex);
+      if (!saved || saved.status !== 'finalized') throw new RelayError(409, 'Reconciled refund is unavailable');
+      const result = structuredClone(saved); delete result.attempt; return result;
+    }
+    const refund = data.refund;
+    if (row.status !== 'refund_pending' || !refund || refund.status !== 'pending' || refund.receipt || refund.reference !== input.expectedReference || refund.grossAmountCodec !== input.expectedGrossAmountCodec || refund.amountCodec !== input.expectedAmountCodec || !refund.attempt || refund.attempt.token !== attemptToken || !refund.signingStartedAt || (refund.attempt.transactionHash !== undefined && refund.attempt.transactionHash.toLowerCase() !== input.transactionHash)) throw new RelayError(409, 'Pending refund no longer matches reconciliation');
+    return undefined;
+  }
+
+  /** Bind a trusted finalized direct transfer without inventing an on-chain reference or moving the scanner. */
+  reconcileRefund(id: string, input: RefundReconciliation, evidence: FinalizedManualRefundEvidence): RefundObligation {
+    return this.atomic(() => {
+      const already = this.checkRefundReconciliation(id, input); if (already) return already;
+      const row = this.row(id); const data = this.decode(row); const refund = data.refund!;
+      for (const field of ['blockNumber', 'blockHash', 'transactionHash', 'eventIndex'] as const) if (evidence[field] !== input[field]) throw new RelayError(409, 'Refund evidence does not match locator');
+      // The convenience customer receipt can be absent for a mismatched payment or replaced by
+      // a later exact payment; the original funding event remains immutable in the evidence table.
+      const funding = (this.db.prepare("SELECT event_id,evidence FROM payments WHERE order_id=? AND kind='payment' AND evidence IS NOT NULL").all(id) as { event_id: string; evidence: string }[])
+        .map((entry) => decrypt<FinalizedTransferEvidence>(entry.evidence, this.key, entry.event_id))
+        .sort((a, b) => BigInt(a.blockNumber) < BigInt(b.blockNumber) ? -1 : BigInt(a.blockNumber) > BigInt(b.blockNumber) ? 1 : a.eventIndex - b.eventIndex)[0];
+      const originalTime = Date.parse(funding?.finalizedAt ?? ''); const signingTime = Date.parse(refund.signingStartedAt!); const transferTime = Date.parse(evidence.finalizedAt);
+      if (!funding || !Number.isFinite(originalTime) || !Number.isFinite(signingTime) || !Number.isFinite(transferTime) || transferTime < originalTime || transferTime < signingTime || BigInt(evidence.blockNumber) < BigInt(funding.blockNumber)) throw new RelayError(409, 'Refund evidence predates this obligation');
+      const request = { ...data.paymentRequest, payer: data.paymentRequest.recipient, recipient: data.paymentRequest.payer, amountCodec: refund.amountCodec!, reference: refund.reference };
+      const recordedAt = new Date(this.now()).toISOString(); let receipt: RefundReceipt;
+      try { receipt = verifyFinalizedRefund(request, { status: 'finalized', request, evidence, reconciliation: { version: 1, kind: 'operator-bound', expectedReference: refund.reference, recordedAt } }); }
+      catch { throw new RelayError(409, 'Finalized refund evidence does not match obligation'); }
+      const eventId = `${evidence.blockHash}:${evidence.eventIndex}`;
+      if (this.db.prepare('SELECT event_id FROM payments WHERE event_id=?').get(eventId)) throw new RelayError(409, 'Transfer evidence already consumed');
+      // Direct transfers have one physical movement even if multiple pallets report its mirror events.
+      const consumed = this.db.prepare('SELECT event_id,evidence FROM payments WHERE evidence IS NOT NULL').all() as { event_id: string; evidence: string }[];
+      if (consumed.some((entry) => { const prior = decrypt<FinalizedTransferEvidence | FinalizedManualRefundEvidence>(entry.evidence, this.key, entry.event_id); return prior.blockHash === evidence.blockHash && prior.transactionHash === evidence.transactionHash; })) throw new RelayError(409, 'Physical transfer already consumed');
+      const { attemptToken, ...binding } = input;
+      (data.refundReconciliations ??= []).push({ ...binding, version: 1, recordedAt, attemptTokenHash: digest(attemptToken) });
+      refund.attempt!.submitted = true; refund.attempt!.transactionHash = evidence.transactionHash;
+      if (!this.settleRefund(row, data, refund, receipt, eventId, evidence)) throw new RelayError(409, 'Refund accounting does not match obligation');
+      const result = structuredClone(refund); delete result.attempt; return result;
+    });
+  }
+
   /** Read a private operator queue; HTTP authentication is enforced by the server. */
   list(): Array<OrderView & { owner: string | null; address: Address; contact: Contact; quantity: number; receivedCodec: string; refundedCodec: string; refundFeesCodec: string }> {
     this.expire(); return (this.db.prepare("SELECT * FROM orders ORDER BY CASE WHEN status IN ('paid','shipping_review','refund_pending') THEN 0 ELSE 1 END, created ASC LIMIT 500").all() as unknown as Row[]).map((row) => { const data = this.decode(row); return { ...this.view(row, data), owner: row.owner, address: data.input.address, contact: data.input.contact, quantity: row.quantity, receivedCodec: data.receivedCodec, refundedCodec: data.refundedCodec, refundFeesCodec: data.refundFeesCodec ?? '0' }; });
   }
   /** Fetch one operator record directly even when a large queue is paginated by the caller. */
-  operatorOrder(id: string): ReturnType<OrderStore['list']>[number] & { refundHistory: RefundObligation[]; refundAmendment?: RefundAmendmentAudit } {
+  operatorOrder(id: string): ReturnType<OrderStore['list']>[number] & { refundHistory: RefundObligation[]; refundAmendment?: RefundAmendmentAudit; refundReconciliations: RefundReconciliationAudit[] } {
     const row = this.row(id); const data = this.decode(row);
-    return { ...this.view(row, data), owner: row.owner, address: data.input.address, contact: data.input.contact, quantity: row.quantity, receivedCodec: data.receivedCodec, refundedCodec: data.refundedCodec, refundFeesCodec: data.refundFeesCodec ?? '0', refundHistory: structuredClone(data.refundHistory ?? []), ...(data.refundAmendment ? { refundAmendment: structuredClone(data.refundAmendment) } : {}) };
+    return { ...this.view(row, data), owner: row.owner, address: data.input.address, contact: data.input.contact, quantity: row.quantity, receivedCodec: data.receivedCodec, refundedCodec: data.refundedCodec, refundFeesCodec: data.refundFeesCodec ?? '0', refundHistory: structuredClone(data.refundHistory ?? []), refundReconciliations: structuredClone(data.refundReconciliations ?? []), ...(data.refundAmendment ? { refundAmendment: structuredClone(data.refundAmendment) } : {}) };
   }
   /** Return private chain evidence for payment mismatch/refund reconciliation. */
-  paymentEvidence(id: string): FinalizedTransferEvidence[] {
+  paymentEvidence(id: string): Array<FinalizedTransferEvidence | FinalizedManualRefundEvidence> {
     this.row(id);
     const rows = this.db.prepare('SELECT event_id,evidence FROM payments WHERE order_id=?').all(id) as { event_id: string; evidence: string | null }[];
-    return rows.filter((row) => row.evidence).map((row) => decrypt<FinalizedTransferEvidence>(row.evidence!, this.key, row.event_id));
+    return rows.filter((row) => row.evidence).map((row) => decrypt<FinalizedTransferEvidence | FinalizedManualRefundEvidence>(row.evidence!, this.key, row.event_id));
   }
   /** Assign once; another volunteer cannot silently take over an active order. */
   claim(id: string, owner: string): void {

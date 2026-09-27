@@ -1,15 +1,18 @@
 import { ApiPromise, WsProvider } from '@polkadot/api';
-import { codecAmount, validatePaymentRequest, NATIVE_XOR_ASSET_ID, type PaymentRequest, type FinalizedTransferEvidence, type FinalizedNetworkFee } from '../core/index.js';
+import { codecAmount, validatePaymentRequest, NATIVE_XOR_ASSET_ID, type PaymentRequest, type FinalizedTransferEvidence, type FinalizedNetworkFee, type FinalizedManualRefundEvidence } from '../core/index.js';
 import { accountAddress, type MerchantConfig } from './config.js';
 import type { OrderStore, RefundFeeQuote } from './store.js';
 import { awaitWithAbort } from './lifecycle.js';
 
 export interface FinalizedBlock { number: number; transfers: FinalizedTransferEvidence[] }
+/** Exact public locator; the merchant must fetch evidence rather than accept an HTTP assertion. */
+export interface FinalizedRefundLocator { blockNumber: string; blockHash: string; transactionHash: string; eventIndex: number }
 export interface ChainReader {
   head(): Promise<number>;
   block(number: number): Promise<FinalizedBlock>;
   assertConfiguration(): Promise<void>;
   quoteRefund(request: PaymentRequest, grossAmountCodec: string): Promise<RefundFeeQuote>;
+  manualRefund(locator: FinalizedRefundLocator): Promise<FinalizedManualRefundEvidence>;
   close(): Promise<void>;
 }
 interface Codec { toString(): string; toHex(): string; toJSON(): unknown }
@@ -123,6 +126,51 @@ export class SoraChainReader implements ChainReader {
     }
   }
 
+  /** Read one direct native assets.transfer without changing automatic reference matching or scan progress. */
+  async manualRefund(locator: FinalizedRefundLocator): Promise<FinalizedManualRefundEvidence> {
+    if (!locator || !/^[1-9][0-9]{0,15}$/.test(locator.blockNumber) || !Number.isSafeInteger(Number(locator.blockNumber)) || !/^0x[a-f0-9]{64}$/.test(locator.blockHash) || !/^0x[a-f0-9]{64}$/.test(locator.transactionHash) || !Number.isSafeInteger(locator.eventIndex) || locator.eventIndex < 0) throw new Error('Invalid refund locator');
+    const number = Number(locator.blockNumber);
+    if (number > await this.head()) throw new Error('Cannot read unfinalized refund');
+    const canonical = (await this.api.rpc.chain.getBlockHash(number)).toHex().toLowerCase();
+    if (canonical !== locator.blockHash) throw new Error('Refund block is not canonical');
+    try { return await this.readManualRefund(this.api, locator); }
+    catch (error) {
+      if (!missingHistoricalState(error)) throw error;
+      if (!this.archive) throw new ArchiveRequiredError();
+      if (this.archive.genesisHash.toHex().toLowerCase() !== this.config.chain.genesisHash) throw new Error('Archive RPC genesis mismatch');
+      if ((await this.archive.rpc.chain.getBlockHash(number)).toHex().toLowerCase() !== canonical) throw new Error('Archive RPC finalized block hash mismatch');
+      try { return await this.readManualRefund(this.archive, locator); }
+      catch (archiveError) { if (missingHistoricalState(archiveError)) throw new ArchiveRequiredError(); throw archiveError; }
+    }
+  }
+  /** assets.Transfer and balances.Transfer mirror one physical transfer; only the assets event is bindable. */
+  private async readManualRefund(source: ApiPromise, locator: FinalizedRefundLocator): Promise<FinalizedManualRefundEvidence> {
+    const [block, at] = await Promise.all([source.rpc.chain.getBlock(locator.blockHash), source.at(locator.blockHash)]);
+    if (block.block.header.hash.toHex().toLowerCase() !== locator.blockHash) throw new Error('RPC block header hash mismatch');
+    if (!at.query.system?.events || !at.query.timestamp?.now) throw new Error('Refund block metadata unavailable');
+    const [codecRecords, timestamp] = await Promise.all([at.query.system.events(), at.query.timestamp.now()]);
+    const records = Array.from(codecRecords as unknown as Iterable<EventRecord>);
+    const record = records[locator.eventIndex];
+    if (!record?.phase.isApplyExtrinsic || record.event.section !== 'assets' || record.event.method !== 'Transfer' || record.event.data.length !== 4) throw new Error('Expected canonical assets transfer event');
+    const index = record.phase.asApplyExtrinsic.toNumber();
+    const extrinsic = block.block.extrinsics[index];
+    if (!extrinsic || extrinsic.hash.toHex().toLowerCase() !== locator.transactionHash || !extrinsic.isSigned || extrinsic.method.section !== 'assets' || extrinsic.method.method !== 'transfer' || extrinsic.method.args.length !== 3) throw new Error('Expected direct signed assets transfer');
+    const related = records.filter((entry) => entry.phase.isApplyExtrinsic && entry.phase.asApplyExtrinsic.toNumber() === index);
+    const assets = related.filter(({ event }) => event.section === 'assets' && event.method === 'Transfer');
+    const balances = related.filter(({ event }) => event.section === 'balances' && event.method === 'Transfer');
+    if (assets.length !== 1 || balances.length !== 1 || balances[0]!.event.data.length !== 3 || related.filter(({ event }) => event.section === 'system' && event.method === 'ExtrinsicSuccess').length !== 1 || related.some(({ event }) => event.section === 'system' && event.method === 'ExtrinsicFailed')) throw new Error('Ambiguous or failed refund transfer');
+    const data = record.event.data;
+    const payer = accountAddress(data[0]!.toString()); const recipient = accountAddress(data[1]!.toString());
+    const nativeAsset = (value: Codec): boolean => { const json = value.toJSON(); return (typeof json === 'string' ? json : (json as { code?: unknown })?.code) === NATIVE_XOR_ASSET_ID; };
+    const amountCodec = codecAmount(data[3]!.toString(), false).toString();
+    const args = extrinsic.method.args;
+    const mirror = balances[0]!.event.data;
+    if (!nativeAsset(data[2]!) || !nativeAsset(args[0] as unknown as Codec) || accountAddress(extrinsic.signer.toString()) !== payer || accountAddress(args[1]!.toString()) !== recipient || args[2]!.toString() !== amountCodec || accountAddress(mirror[0]!.toString()) !== payer || accountAddress(mirror[1]!.toString()) !== recipient || mirror[2]!.toString() !== amountCodec) throw new Error('Refund call and event identity mismatch');
+    const finalizedAt = new Date(Number(timestamp.toString())).toISOString();
+    const networkFee = finalizedNetworkFee(records, index, extrinsic, payer, NATIVE_XOR_ASSET_ID, true);
+    return { ...(networkFee ? { networkFee } : {}), chainGenesisHash: this.config.chain.genesisHash, assetId: NATIVE_XOR_ASSET_ID, payer, recipient, amountCodec, reference: null, transferKind: 'assets-transfer', transactionHash: locator.transactionHash, blockHash: locator.blockHash, blockNumber: locator.blockNumber, eventIndex: locator.eventIndex, successful: true, finalized: true, finalizedAt };
+  }
+
   /** Decode events from a trusted source pinned to the primary RPC's finalized canonical block. */
   private async readBlock(source: ApiPromise, number: number, hash: string): Promise<FinalizedBlock> {
     const [block, at] = await Promise.all([source.rpc.chain.getBlock(hash), source.at(hash)]);
@@ -160,11 +208,12 @@ export class SoraChainReader implements ChainReader {
 /** Corroborate SORA's withdrawal with TransactionFeePaid; these describe ONE fee, never two.
  * Unknown event layouts, tips, nested calls and multiple transfers do not establish a deductible fee.
  */
-function finalizedNetworkFee(records: EventRecord[], extrinsicIndex: number, extrinsic: { isSigned: boolean; signer: { toString(): string }; method: { section: string; method: string } }, payer: string, assetId: string): FinalizedNetworkFee | undefined {
+function finalizedNetworkFee(records: EventRecord[], extrinsicIndex: number, extrinsic: { isSigned: boolean; signer: { toString(): string }; method: { section: string; method: string } }, payer: string, assetId: string, directAssets = false): FinalizedNetworkFee | undefined {
   try {
-    if (assetId !== NATIVE_XOR_ASSET_ID || !extrinsic.isSigned || extrinsic.method.section !== 'liquidityProxy' || extrinsic.method.method !== 'xorlessTransfer' || accountAddress(extrinsic.signer.toString()) !== payer) return undefined;
+    const supportedCall = directAssets ? extrinsic.method.section === 'assets' && extrinsic.method.method === 'transfer' : extrinsic.method.section === 'liquidityProxy' && extrinsic.method.method === 'xorlessTransfer';
+    if (assetId !== NATIVE_XOR_ASSET_ID || !extrinsic.isSigned || !supportedCall || accountAddress(extrinsic.signer.toString()) !== payer) return undefined;
     const related = records.map((record, index) => ({ record, index })).filter(({ record }) => record.phase.isApplyExtrinsic && record.phase.asApplyExtrinsic.toNumber() === extrinsicIndex);
-    if (related.filter(({ record: { event } }) => event.section === 'liquidityProxy' && event.method === 'XorlessTransfer').length !== 1) return undefined;
+    if (related.filter(({ record: { event } }) => directAssets ? event.section === 'assets' && event.method === 'Transfer' : event.section === 'liquidityProxy' && event.method === 'XorlessTransfer').length !== 1) return undefined;
     const withdrawals = related.filter(({ record: { event } }) => event.section === 'xorFee' && event.method === 'FeeWithdrawn');
     const paidEvents = related.filter(({ record: { event } }) => event.section === 'transactionPayment' && event.method === 'TransactionFeePaid');
     if (withdrawals.length !== 1 || paidEvents.length !== 1) return undefined;
