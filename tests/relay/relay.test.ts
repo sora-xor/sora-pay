@@ -369,3 +369,50 @@ test('exact-XOR merchant refreshes only carrier availability and restores suspen
     assert.equal(f.store.get(saved.orderId,saved.recoveryToken).paymentRequest.amountCodec,'2259225000000000000');
   } finally {f.cleanup();}
 });
+
+test('exact-XOR refresh keeps newly supported countries out of checkout without repricing', async () => {
+  const c = config(); c.pricing.kind = 'exact-xor'; c.pricing.mode = 'launch-fixed'; c.product.priceXor = '1.759225'; c.providers = { shipping: 'japan-post-ems' };
+  c.shipping = [{ ...c.shipping[0], id: 'ems-zone-1-500', priceXor: '0.5' }];
+  const f = fixture(c); let time = new Date(epoch); let countries = ['JP'];
+  const refresher = createCatalogRefresher(c, { clock: () => time, shipping: async () => ({ version: 'ems', fetchedAt: time.toISOString(), availabilityUpdatedLabel: 'September 25', sources: {}, bands: [{ zone: 1, maxGrams: 500, priceJpy: '1200' }], countries: countries.map((code) => ({ code, zone: 1, service: 'accepted', requiresReview: false })) }) });
+  try {
+    await refresher.refresh();
+    const saved = f.store.create({ ...input(), shippingRateId: 'ems-zone-1-500' });
+    time = new Date(epoch + 86_400_000); countries = ['JP', 'KR']; await refresher.refresh();
+    assert.deepEqual(c.shipping[0].countries, ['JP']);
+    assert.equal(c.shipping[0].priceXor, '0.5');
+    assert.equal(c.shipping[0].priceJpy, '600');
+    assert.equal(c.product.priceXor, '1.759225');
+    assert.deepEqual(f.store.catalog().shipping[0].countries, ['JP']);
+    assert.throws(() => f.store.create({ ...input(), shippingRateId: 'ems-zone-1-500', address: { ...input().address, country: 'KR' } }), /Shipping inquiry required/);
+    assert.equal(f.store.get(saved.orderId, saved.recoveryToken).paymentRequest.amountCodec, '2259225000000000000');
+  } finally { f.cleanup(); }
+});
+
+test('exact-XOR refresh removes and restores only original countries even after a band becomes empty', async () => {
+  const c = config(); c.pricing.kind = 'exact-xor'; c.product.priceXor = '1.759225'; c.providers = { shipping: 'japan-post-ems' };
+  c.shipping = [{ ...c.shipping[0], id: 'ems-zone-1-500', countries: ['JP', 'KR'], priceXor: '0.5' }];
+  let time = new Date(epoch); let accepted = ['JP', 'KR', 'CN'];
+  const refresher = createCatalogRefresher(c, { clock: () => time, shipping: async () => ({ version: 'ems', fetchedAt: time.toISOString(), availabilityUpdatedLabel: 'September 25', sources: {}, bands: [{ zone: 1, maxGrams: 500, priceJpy: '1200' }], countries: ['JP', 'KR', 'CN'].map((code) => ({ code, zone: 1, service: accepted.includes(code) ? 'accepted' : 'suspended', requiresReview: !accepted.includes(code) })) }) });
+  await refresher.refresh(); assert.deepEqual(c.shipping[0].countries, ['JP', 'KR']);
+  time = new Date(epoch + 86_400_000); accepted = ['KR', 'CN']; await refresher.refresh(); assert.deepEqual(c.shipping[0].countries, ['KR']);
+  time = new Date(epoch + 2 * 86_400_000); accepted = ['CN']; await refresher.refresh(); assert.deepEqual(c.shipping, []);
+  time = new Date(epoch + 3 * 86_400_000); accepted = ['JP', 'KR', 'CN']; await refresher.refresh();
+  assert.deepEqual(c.shipping[0].countries, ['JP', 'KR']);
+  assert.equal(c.shipping[0].priceXor, '0.5');
+  assert.equal(c.shipping[0].priceJpy, '600');
+});
+
+test('exact-XOR refresh never substitutes another launch zone or weight band', async () => {
+  const c = config(); c.pricing.kind = 'exact-xor'; c.product.priceXor = '1.759225'; c.providers = { shipping: 'japan-post-ems' };
+  c.shipping = [
+    { ...c.shipping[0], id: 'ems-zone-1-500', countries: ['JP'], priceXor: '0.5' },
+    { ...c.shipping[0], id: 'ems-zone-2-500', countries: ['KR'], priceXor: '0.75' },
+  ];
+  const frozen = structuredClone(c.shipping); let time = new Date(epoch); let maxGrams = 500; let switchedZones = true;
+  const refresher = createCatalogRefresher(c, { clock: () => time, shipping: async () => ({ version: 'ems', fetchedAt: time.toISOString(), availabilityUpdatedLabel: 'September 25', sources: {}, bands: [1, 2].map((zone) => ({ zone, maxGrams, priceJpy: '1200' })), countries: [{ code: 'JP', zone: switchedZones ? 2 : 1, service: 'accepted', requiresReview: false }, { code: 'KR', zone: switchedZones ? 1 : 2, service: 'accepted', requiresReview: false }] }) });
+  await refresher.refresh(); assert.deepEqual(c.shipping, []);
+  time = new Date(epoch + 86_400_000); switchedZones = false; maxGrams = 1000; await refresher.refresh(); assert.deepEqual(c.shipping, []);
+  time = new Date(epoch + 2 * 86_400_000); maxGrams = 500; await refresher.refresh();
+  assert.deepEqual(c.shipping.map(({ reviewedAt, ...rate }) => rate), frozen.map(({ reviewedAt, ...rate }) => rate));
+});

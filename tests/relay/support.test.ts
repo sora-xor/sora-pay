@@ -9,6 +9,7 @@ test('both disabled merchant examples publish only the community Telegram suppor
   for (const filename of ['merchant.polkaswap.json.example', 'merchant.disabled.json.example']) {
     const config = JSON.parse(readFileSync(new URL(`../../deploy/${filename}`, import.meta.url), 'utf8'));
     assert.equal(config.enabled, false);
+    assert.deepEqual(config.approvedShippingCountries, []);
     assert.equal(config.merchant.supportTelegram, 'sora_xor');
     assert.equal(Object.hasOwn(config.merchant, 'supportEmail'), false);
     assert.equal(config.product.priceXor, '1.759225');
@@ -16,7 +17,8 @@ test('both disabled merchant examples publish only the community Telegram suppor
 });
 
 test('Telegram-only Polkaswap catalog has no public email or personal handle and keeps fixed XOR prices', () => {
-  const config = validateConfig({ ...structuredClone(polkaswapTemplate), enabled: true });
+  const config = validateConfig({ ...structuredClone(polkaswapTemplate), enabled: true,
+    approvedShippingCountries: [...new Set(polkaswapTemplate.shipping.flatMap((rate) => rate.countries))] });
   const store = new OrderStore(':memory:', config, Buffer.alloc(32, 7));
   try {
     const catalog = store.catalog();

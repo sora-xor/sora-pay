@@ -41,17 +41,17 @@ export function createCatalogRefresher(config: MerchantConfig, sources?: Partial
       next.sourceMetadata = { ...next.sourceMetadata, fx: fxSnapshot };
     }
     if (shipping) {
-      // Every complete carrier-supported destination is considered automatically. No per-country
-      // operator allowlist is required; volunteers check food/import legality before dispatch.
+      // Carrier availability is separate from the merchant's configured destinations.
       const available = buildAvailableEmsRates(shipping, next.blockedCountries ?? []).map((rate) => ({ ...rate, reviewedAt: rate.reviewedAt.slice(0, 10) }));
       if (next.pricing.kind === 'exact-xor') {
         const byId = new Map(available.map((rate) => [rate.id, rate]));
         next.shipping = fixedShippingPrices.flatMap((frozen) => {
           const current = byId.get(frozen.id);
           if (!current || current.maxGrams !== frozen.maxGrams) return [];
-          // Carrier tariffs may change; an exact-XOR merchant keeps its published amount until
-          // explicitly repriced. Only supported destinations/weight bands are refreshed here.
-          return [{ ...frozen, countries: current.countries, reviewedAt: current.reviewedAt }];
+          // Keep each launch band's destinations and amount; availability may remove or restore
+          // them, but a carrier addition must not silently expand the merchant's checkout.
+          const countries = current.countries.filter((country) => frozen.countries.includes(country));
+          return countries.length ? [{ ...frozen, countries, reviewedAt: current.reviewedAt }] : [];
         });
       } else next.shipping = available;
       next.sourceMetadata = { ...next.sourceMetadata, shipping: { version: shipping.version, fetchedAt: shipping.fetchedAt, availabilityUpdatedLabel: shipping.availabilityUpdatedLabel, sources: shipping.sources } };

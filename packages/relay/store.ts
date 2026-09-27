@@ -97,12 +97,16 @@ export class OrderStore {
   private save(row: Row, data: PrivateOrder): void { this.db.prepare('UPDATE orders SET data=?,status=?,reserved=?,updated=?,owner=?,notification=? WHERE id=?').run(encrypt(data, this.key, row.id), row.status, row.reserved, this.now(), row.owner, row.notification, row.id); }
   private enqueue(row: Row, kind: string): void { this.db.prepare('INSERT INTO outbox(id,order_id,kind,next_attempt) VALUES(?,?,?,?)').run(randomUUID(), row.id, kind, this.now()); row.notification = 'pending'; }
   private expire(): void { this.db.prepare("UPDATE orders SET status='expired',reserved=0,updated=expires WHERE status='unpaid' AND expires<=?").run(this.now()); }
+  /** Apply current destination restrictions only to catalog offers and newly created orders. */
+  private shippingCountryAllowed(country: string): boolean {
+    return !this.config.blockedCountries?.includes(country) && (this.config.approvedShippingCountries === undefined || this.config.approvedShippingCountries.includes(country));
+  }
   /** Public catalog exposes only publishable merchant policy and current available stock. */
   catalog(): Record<string, unknown> {
     this.expire();
     if (!this.config.enabled) return { enabled: false, version: this.config.version ?? 'unconfigured' };
     const c = this.config;
-    return { enabled: true, version: c.version, merchant: c.merchant, refundPolicy: resolveRefundPolicy(c.refundPolicy), pricing: c.pricing.kind === 'exact-xor' ? { kind: 'exact-xor', version: c.pricing.version } : c.pricing, sourceMetadata: c.pricing.kind === 'exact-xor' ? (c.sourceMetadata?.shipping ? { shipping: c.sourceMetadata.shipping } : undefined) : c.sourceMetadata, product: { id: c.product.id, name: c.product.name, grams: c.product.grams, packedGrams: c.product.packedGrams, packagingGrams: c.product.packagingGrams ?? 0, fulfillmentMode: c.fulfillmentMode ?? 'stocked', priceXor: merchantPrice(c, c.product), stockAvailable: this.available() }, shipping: c.shipping.filter((rate) => rate.countries.some((country) => !c.blockedCountries?.includes(country))).map((rate) => ({ id: rate.id, label: rate.label, maxGrams: rate.maxGrams, reviewedAt: rate.reviewedAt, countries: rate.countries.filter((country) => !c.blockedCountries?.includes(country)), priceXor: merchantPrice(c, rate, true) })), chain: { genesisHash: c.chain.genesisHash, assetId: c.chain.assetId, decimals: c.chain.decimals, denomination: c.chain.denomination, recipient: c.chain.recipient } };
+    return { enabled: true, version: c.version, merchant: c.merchant, refundPolicy: resolveRefundPolicy(c.refundPolicy), pricing: c.pricing.kind === 'exact-xor' ? { kind: 'exact-xor', version: c.pricing.version } : c.pricing, sourceMetadata: c.pricing.kind === 'exact-xor' ? (c.sourceMetadata?.shipping ? { shipping: c.sourceMetadata.shipping } : undefined) : c.sourceMetadata, product: { id: c.product.id, name: c.product.name, grams: c.product.grams, packedGrams: c.product.packedGrams, packagingGrams: c.product.packagingGrams ?? 0, fulfillmentMode: c.fulfillmentMode ?? 'stocked', priceXor: merchantPrice(c, c.product), stockAvailable: this.available() }, shipping: c.shipping.filter((rate) => rate.countries.some((country) => this.shippingCountryAllowed(country))).map((rate) => ({ id: rate.id, label: rate.label, maxGrams: rate.maxGrams, reviewedAt: rate.reviewedAt, countries: rate.countries.filter((country) => this.shippingCountryAllowed(country)), priceXor: merchantPrice(c, rate, true) })), chain: { genesisHash: c.chain.genesisHash, assetId: c.chain.assetId, decimals: c.chain.decimals, denomination: c.chain.denomination, recipient: c.chain.recipient } };
   }
   private available(): number | null { if (this.config.fulfillmentMode === 'on-demand') return null; const row = this.db.prepare('SELECT COALESCE(SUM(quantity),0) AS total FROM orders WHERE reserved=1').get() as { total: number }; return Math.max(0, this.config.product.stock! - row.total); }
   /** Save the private order before returning any signable payment request. */
@@ -119,7 +123,7 @@ export class OrderStore {
       }
       const c = this.config;
       const rate = c.shipping.find((r) => r.id === input.shippingRateId && r.countries.includes(input.address.country) && r.maxGrams >= input.quantity * c.product.packedGrams + (c.product.packagingGrams ?? 0));
-      if (input.productId !== c.product.id || !rate || c.blockedCountries?.includes(input.address.country)) throw new RelayError(400, 'Shipping inquiry required for this order');
+      if (input.productId !== c.product.id || !rate || !this.shippingCountryAllowed(input.address.country)) throw new RelayError(400, 'Shipping inquiry required for this order');
       if (this.available() !== null && this.available()! < input.quantity) throw new RelayError(409, 'Insufficient stock');
       const price = BigInt(xorToCodec(merchantPrice(c, c.product), c.chain.decimals, c.chain.denomination));
       const shipping = BigInt(xorToCodec(merchantPrice(c, rate, true), c.chain.decimals, c.chain.denomination));

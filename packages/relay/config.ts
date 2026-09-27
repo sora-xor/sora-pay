@@ -22,6 +22,8 @@ export interface MerchantConfig {
   fulfillmentMode?: 'on-demand' | 'stocked';
   reviewEveryPaidOrder?: boolean;
   blockedCountries?: string[];
+  /** Optional reviewed destinations for new orders; an empty list permits inquiries only. */
+  approvedShippingCountries?: string[];
   providers?: { fx?: 'mufg-daily'; shipping?: 'japan-post-ems' };
   sourceMetadata?: Record<string, unknown>;
   version: string;
@@ -34,6 +36,8 @@ export interface MerchantConfig {
   retentionDays: number;
 }
 export const NATIVE_XOR = '0x0200000000000000000000000000000000000000000000000000000000000000';
+// ISO 3166-1 alpha-2 assignments; aliases and unassigned two-letter strings are not approvals.
+const shippingCountryCodes = new Set('AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW'.split(' '));
 
 /** Canonical SS58 makes alternate encodings of one account compare identically. */
 export function accountAddress(value: string): string {
@@ -48,6 +52,8 @@ export function validateConfig(value: MerchantConfig): MerchantConfig {
   if (!value || typeof value.enabled !== 'boolean') throw new Error('Invalid configuration');
   storageMinimumBytes(value.storageMinimumFreeBytes);
   resolveRefundPolicy(value.refundPolicy);
+  const approved = value.approvedShippingCountries;
+  if (approved !== undefined && (!Array.isArray(approved) || approved.some((code) => typeof code !== 'string' || !shippingCountryCodes.has(code)) || new Set(approved).size !== approved.length)) throw new Error('Invalid approved shipping countries');
   if (!value.enabled) return value;
   const requiredMerchantFields = ['id', 'name', 'operatorName', 'dispatchPolicy', 'customsPolicy', 'privacyPolicy', 'cancellationPolicy'] as const;
   for (const item of [value.version, ...requiredMerchantFields.map((field) => value.merchant?.[field]), value.pricing?.version]) {

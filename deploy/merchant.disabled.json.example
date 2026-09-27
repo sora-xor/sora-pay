@@ -48,6 +48,7 @@
   "retentionDays": 30,
   "reviewEveryPaidOrder": true,
   "blockedCountries": [],
+  "approvedShippingCountries": [],
   "providers": {
     "shipping": "japan-post-ems"
   }
