@@ -24,8 +24,6 @@ export interface MerchantConfig {
   blockedCountries?: string[];
   /** Optional reviewed destinations for new orders; an empty list permits inquiries only. */
   approvedShippingCountries?: string[];
-  /** Require an individual-recipient, personal-consumption and no-resale confirmation for new orders. */
-  personalUseOnly?: boolean;
   providers?: { fx?: 'mufg-daily'; shipping?: 'japan-post-ems' };
   sourceMetadata?: Record<string, unknown>;
   version: string;
@@ -52,7 +50,6 @@ export function accountAddress(value: string): string {
 /** Fail closed before opening a payment route if any merchant input is missing. */
 export function validateConfig(value: MerchantConfig): MerchantConfig {
   if (!value || typeof value.enabled !== 'boolean') throw new Error('Invalid configuration');
-  if (value.personalUseOnly !== undefined && typeof value.personalUseOnly !== 'boolean') throw new Error('Invalid personal-use policy');
   storageMinimumBytes(value.storageMinimumFreeBytes);
   resolveRefundPolicy(value.refundPolicy);
   const approved = value.approvedShippingCountries;
