@@ -1,0 +1,46 @@
+{
+  "enabled": false,
+  "version": "example-merchant-v1",
+  "fulfillmentMode": "on-demand",
+  "refundPolicy": { "version": 1, "mode": "full" },
+  "merchant": {
+    "id": "example-merchant",
+    "name": "Example Merchant",
+    "operatorName": "REPLACE_WITH_OPERATOR",
+    "supportEmail": "support@example.test",
+    "dispatchPolicy": "REPLACE_WITH_DISPATCH_POLICY",
+    "customsPolicy": "REPLACE_WITH_CUSTOMS_POLICY",
+    "privacyPolicy": "REPLACE_WITH_PRIVACY_AND_RETENTION_POLICY",
+    "cancellationPolicy": "REPLACE_WITH_CANCELLATION_AND_REFUND_POLICY"
+  },
+  "pricing": {
+    "kind": "exact-xor",
+    "mode": "launch-fixed",
+    "version": "example-prices-v1",
+    "jpyPerUsd": "",
+    "usdPerXor": "",
+    "fxSource": "",
+    "fxDate": ""
+  },
+  "product": {
+    "id": "example-item",
+    "name": "Example Item",
+    "grams": 100,
+    "packedGrams": 150,
+    "packagingGrams": 50,
+    "priceXor": "1"
+  },
+  "shipping": [],
+  "chain": {
+    "genesisHash": "",
+    "assetId": "0x0200000000000000000000000000000000000000000000000000000000000000",
+    "decimals": 18,
+    "denomination": "",
+    "recipient": "",
+    "rpcUrl": "",
+    "startBlock": -1
+  },
+  "allowedOrigins": ["https://merchant.example"],
+  "retentionDays": 30,
+  "reviewEveryPaidOrder": true
+}

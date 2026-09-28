@@ -1,0 +1,10 @@
+{
+  "version": "26.9.0",
+  "platform": "darwin",
+  "arch": "arm64",
+  "directory": "node-v26.9.0-darwin-arm64",
+  "archive": "node-v26.9.0-darwin-arm64.tar.xz",
+  "url": "https://nodejs.org/dist/v26.9.0/node-v26.9.0-darwin-arm64.tar.xz",
+  "checksumsUrl": "https://nodejs.org/dist/v26.9.0/SHASUMS256.txt",
+  "sha256": "8dd6e383c216dbadd04e6eaac5b8fcaec8ba700a58fa51ebd38d4f9532741909"
+}

@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "provider": "MUFG",
+  "method": "derived-midpoint-of-tts-ttb",
+  "jpyPerUsd": "158.78",
+  "tts": "159.78",
+  "ttb": "157.78",
+  "publicationDate": "2026-09-25",
+  "publishedAt": "2026-09-25T10:26:00+09:00",
+  "fetchedAt": "2026-09-25T07:21:44.801Z",
+  "sourceUrl": "https://www.bk.mufg.jp/gdocs/kinri/kinri_data_utf8.js",
+  "referenceUrl": "https://www.bk.mufg.jp/ippan/kinri/list_j/kinri/kawase.html",
+  "evidence": {
+    "url": "https://www.bk.mufg.jp/gdocs/kinri/kinri_data_utf8.js",
+    "fetchedAt": "2026-09-25T07:21:44.801Z",
+    "sha256": "f861a9bd4d5d26ddb45d278b6eaf18160b4dc87c6c499a49f81e5cfbefa80d90",
+    "lastModified": "Fri, 25 Sep 2026 07:13:03 GMT"
+  }
+}

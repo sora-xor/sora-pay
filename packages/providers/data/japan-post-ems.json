@@ -1,0 +1,4135 @@
+{
+  "version": "japan-post-ems-a1759d7073326a8a",
+  "carrier": "Japan Post",
+  "service": "EMS",
+  "currency": "JPY",
+  "fetchedAt": "2026-09-25T07:21:44.778Z",
+  "availabilityUpdatedLabel": "Updated on September 2",
+  "availabilityPreviousAnnouncement": "June 26, 2026",
+  "tentativeSurchargesIncluded": true,
+  "sources": {
+    "rates": {
+      "url": "https://www.post.japanpost.jp/send/oversea/charge/list-ems/all_en.html",
+      "fetchedAt": "2026-09-25T07:21:44.778Z",
+      "sha256": "e2652a5fa340a3d2d9e495437fa3e220b7eeaa9fcc1e61265df1a74d33dee0ee",
+      "lastModified": "Thu, 04 Jun 2026 06:58:11 GMT"
+    },
+    "zones": {
+      "url": "https://www.post.japanpost.jp/service/send/oversea/list/delivery/ems/country/all_en.html",
+      "fetchedAt": "2026-09-25T07:21:44.778Z",
+      "sha256": "152427430fb49f0121c028ffcc521bea4400354d0745273ecef1cda117519a81",
+      "lastModified": "Sat, 03 Jan 2026 08:58:58 GMT"
+    },
+    "availability": {
+      "url": "https://www.post.japanpost.jp/service/send/oversea/information/overview_en.html",
+      "fetchedAt": "2026-09-25T07:21:44.778Z",
+      "sha256": "523df62f65150eeb2791c66fd60c34c2f58faaaa04a265e05736c2f7250f0e2d",
+      "lastModified": "Tue, 01 Sep 2026 04:11:26 GMT"
+    },
+    "restrictionsUrl": "https://www.post.japanpost.jp/service/send/oversea/information/overview_en.pdf"
+  },
+  "bands": [
+    {
+      "zone": 1,
+      "maxGrams": 500,
+      "priceJpy": "1450"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 500,
+      "priceJpy": "1900"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 500,
+      "priceJpy": "3150"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 500,
+      "priceJpy": "3900"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 500,
+      "priceJpy": "3600"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 600,
+      "priceJpy": "1600"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 600,
+      "priceJpy": "2150"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 600,
+      "priceJpy": "3400"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 600,
+      "priceJpy": "4180"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 600,
+      "priceJpy": "3900"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 700,
+      "priceJpy": "1750"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 700,
+      "priceJpy": "2400"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 700,
+      "priceJpy": "3650"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 700,
+      "priceJpy": "4460"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 700,
+      "priceJpy": "4200"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 800,
+      "priceJpy": "1900"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 800,
+      "priceJpy": "2650"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 800,
+      "priceJpy": "3900"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 800,
+      "priceJpy": "4740"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 800,
+      "priceJpy": "4500"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 900,
+      "priceJpy": "2050"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 900,
+      "priceJpy": "2900"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 900,
+      "priceJpy": "4150"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 900,
+      "priceJpy": "5020"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 900,
+      "priceJpy": "4800"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 1000,
+      "priceJpy": "2200"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 1000,
+      "priceJpy": "3150"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 1000,
+      "priceJpy": "4400"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 1000,
+      "priceJpy": "5300"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 1000,
+      "priceJpy": "5100"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 1250,
+      "priceJpy": "2500"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 1250,
+      "priceJpy": "3500"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 1250,
+      "priceJpy": "5000"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 1250,
+      "priceJpy": "5990"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 1250,
+      "priceJpy": "5850"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 1500,
+      "priceJpy": "2800"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 1500,
+      "priceJpy": "3850"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 1500,
+      "priceJpy": "5550"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 1500,
+      "priceJpy": "6600"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 1500,
+      "priceJpy": "6600"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 1750,
+      "priceJpy": "3100"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 1750,
+      "priceJpy": "4200"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 1750,
+      "priceJpy": "6150"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 1750,
+      "priceJpy": "7290"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 1750,
+      "priceJpy": "7350"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 2000,
+      "priceJpy": "3400"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 2000,
+      "priceJpy": "4550"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 2000,
+      "priceJpy": "6700"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 2000,
+      "priceJpy": "7900"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 2000,
+      "priceJpy": "8100"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 2500,
+      "priceJpy": "3900"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 2500,
+      "priceJpy": "5150"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 2500,
+      "priceJpy": "7750"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 2500,
+      "priceJpy": "9100"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 2500,
+      "priceJpy": "9600"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 3000,
+      "priceJpy": "4400"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 3000,
+      "priceJpy": "5750"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 3000,
+      "priceJpy": "8800"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 3000,
+      "priceJpy": "10300"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 3000,
+      "priceJpy": "11100"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 3500,
+      "priceJpy": "4900"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 3500,
+      "priceJpy": "6350"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 3500,
+      "priceJpy": "9850"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 3500,
+      "priceJpy": "11500"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 3500,
+      "priceJpy": "12600"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 4000,
+      "priceJpy": "5400"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 4000,
+      "priceJpy": "6950"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 4000,
+      "priceJpy": "10900"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 4000,
+      "priceJpy": "12700"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 4000,
+      "priceJpy": "14100"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 4500,
+      "priceJpy": "5900"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 4500,
+      "priceJpy": "7550"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 4500,
+      "priceJpy": "11950"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 4500,
+      "priceJpy": "13900"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 4500,
+      "priceJpy": "15600"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 5000,
+      "priceJpy": "6400"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 5000,
+      "priceJpy": "8150"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 5000,
+      "priceJpy": "13000"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 5000,
+      "priceJpy": "15100"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 5000,
+      "priceJpy": "17100"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 5500,
+      "priceJpy": "6900"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 5500,
+      "priceJpy": "8750"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 5500,
+      "priceJpy": "14050"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 5500,
+      "priceJpy": "16300"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 5500,
+      "priceJpy": "18600"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 6000,
+      "priceJpy": "7400"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 6000,
+      "priceJpy": "9350"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 6000,
+      "priceJpy": "15100"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 6000,
+      "priceJpy": "17500"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 6000,
+      "priceJpy": "20100"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 7000,
+      "priceJpy": "8200"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 7000,
+      "priceJpy": "10350"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 7000,
+      "priceJpy": "17200"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 7000,
+      "priceJpy": "19900"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 7000,
+      "priceJpy": "22500"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 8000,
+      "priceJpy": "9000"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 8000,
+      "priceJpy": "11350"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 8000,
+      "priceJpy": "19300"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 8000,
+      "priceJpy": "22300"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 8000,
+      "priceJpy": "24900"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 9000,
+      "priceJpy": "9800"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 9000,
+      "priceJpy": "12350"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 9000,
+      "priceJpy": "21400"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 9000,
+      "priceJpy": "24700"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 9000,
+      "priceJpy": "27300"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 10000,
+      "priceJpy": "10600"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 10000,
+      "priceJpy": "13350"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 10000,
+      "priceJpy": "23500"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 10000,
+      "priceJpy": "27100"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 10000,
+      "priceJpy": "29700"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 11000,
+      "priceJpy": "11400"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 11000,
+      "priceJpy": "14350"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 11000,
+      "priceJpy": "25600"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 11000,
+      "priceJpy": "29500"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 11000,
+      "priceJpy": "32100"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 12000,
+      "priceJpy": "12200"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 12000,
+      "priceJpy": "15350"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 12000,
+      "priceJpy": "27700"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 12000,
+      "priceJpy": "31900"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 12000,
+      "priceJpy": "34500"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 13000,
+      "priceJpy": "13000"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 13000,
+      "priceJpy": "16350"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 13000,
+      "priceJpy": "29800"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 13000,
+      "priceJpy": "34300"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 13000,
+      "priceJpy": "36900"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 14000,
+      "priceJpy": "13800"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 14000,
+      "priceJpy": "17350"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 14000,
+      "priceJpy": "31900"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 14000,
+      "priceJpy": "36700"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 14000,
+      "priceJpy": "39300"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 15000,
+      "priceJpy": "14600"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 15000,
+      "priceJpy": "18350"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 15000,
+      "priceJpy": "34000"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 15000,
+      "priceJpy": "39100"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 15000,
+      "priceJpy": "41700"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 16000,
+      "priceJpy": "15400"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 16000,
+      "priceJpy": "19350"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 16000,
+      "priceJpy": "36100"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 16000,
+      "priceJpy": "41500"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 16000,
+      "priceJpy": "44100"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 17000,
+      "priceJpy": "16200"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 17000,
+      "priceJpy": "20350"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 17000,
+      "priceJpy": "38200"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 17000,
+      "priceJpy": "43900"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 17000,
+      "priceJpy": "46500"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 18000,
+      "priceJpy": "17000"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 18000,
+      "priceJpy": "21350"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 18000,
+      "priceJpy": "40300"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 18000,
+      "priceJpy": "46300"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 18000,
+      "priceJpy": "48900"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 19000,
+      "priceJpy": "17800"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 19000,
+      "priceJpy": "22350"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 19000,
+      "priceJpy": "42400"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 19000,
+      "priceJpy": "48700"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 19000,
+      "priceJpy": "51300"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 20000,
+      "priceJpy": "18600"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 20000,
+      "priceJpy": "23350"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 20000,
+      "priceJpy": "44500"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 20000,
+      "priceJpy": "51100"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 20000,
+      "priceJpy": "53700"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 21000,
+      "priceJpy": "19400"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 21000,
+      "priceJpy": "24350"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 21000,
+      "priceJpy": "46600"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 21000,
+      "priceJpy": "53500"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 21000,
+      "priceJpy": "56100"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 22000,
+      "priceJpy": "20200"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 22000,
+      "priceJpy": "25350"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 22000,
+      "priceJpy": "48700"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 22000,
+      "priceJpy": "55900"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 22000,
+      "priceJpy": "58500"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 23000,
+      "priceJpy": "21000"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 23000,
+      "priceJpy": "26350"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 23000,
+      "priceJpy": "50800"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 23000,
+      "priceJpy": "58300"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 23000,
+      "priceJpy": "60900"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 24000,
+      "priceJpy": "21800"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 24000,
+      "priceJpy": "27350"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 24000,
+      "priceJpy": "52900"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 24000,
+      "priceJpy": "60700"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 24000,
+      "priceJpy": "63300"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 25000,
+      "priceJpy": "22600"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 25000,
+      "priceJpy": "28350"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 25000,
+      "priceJpy": "55000"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 25000,
+      "priceJpy": "63100"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 25000,
+      "priceJpy": "65700"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 26000,
+      "priceJpy": "23400"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 26000,
+      "priceJpy": "29350"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 26000,
+      "priceJpy": "57100"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 26000,
+      "priceJpy": "65500"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 26000,
+      "priceJpy": "68100"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 27000,
+      "priceJpy": "24200"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 27000,
+      "priceJpy": "30350"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 27000,
+      "priceJpy": "59200"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 27000,
+      "priceJpy": "67900"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 27000,
+      "priceJpy": "70500"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 28000,
+      "priceJpy": "25000"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 28000,
+      "priceJpy": "31350"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 28000,
+      "priceJpy": "61300"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 28000,
+      "priceJpy": "70300"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 28000,
+      "priceJpy": "72900"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 29000,
+      "priceJpy": "25800"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 29000,
+      "priceJpy": "32350"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 29000,
+      "priceJpy": "63400"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 29000,
+      "priceJpy": "72700"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 29000,
+      "priceJpy": "75300"
+    },
+    {
+      "zone": 1,
+      "maxGrams": 30000,
+      "priceJpy": "26600"
+    },
+    {
+      "zone": 2,
+      "maxGrams": 30000,
+      "priceJpy": "33350"
+    },
+    {
+      "zone": 3,
+      "maxGrams": 30000,
+      "priceJpy": "65500"
+    },
+    {
+      "zone": 4,
+      "maxGrams": 30000,
+      "priceJpy": "75100"
+    },
+    {
+      "zone": 5,
+      "maxGrams": 30000,
+      "priceJpy": "77700"
+    }
+  ],
+  "countries": [
+    {
+      "code": "CN",
+      "name": "China",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 1,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "US",
+      "name": "United States of America",
+      "service": "restricted",
+      "ead": "Mandatory",
+      "zone": 4,
+      "coverage": "All areas, excluding Guam, Saipan, Puerto Rico, and U.S. overseas territories that exclude the U.S. Virgin Islands, and U.S. military bases (APO, FPO, and DPO) where the last three digits of their zip codes start with 090-098, 962-966, and 340.",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "carrier_restricted",
+        "limited_delivery_area"
+      ]
+    },
+    {
+      "code": "KR",
+      "name": "Republic of Korea",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 1,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "PH",
+      "name": "Philippines",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 2,
+      "coverage": "Available for some areas",
+      "detailsUrl": "https://www.post.japanpost.jp/int/ems/country/philippine_en.html",
+      "requiresReview": true,
+      "reasons": [
+        "limited_delivery_area"
+      ]
+    },
+    {
+      "code": "TW",
+      "name": "Taiwan",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 1,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "HK",
+      "name": "Hong Kong",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 2,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "AU",
+      "name": "Australia",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "TH",
+      "name": "Thailand",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 2,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "GB",
+      "name": "United Kingdom of Great Britain and Northern Ireland",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 3,
+      "coverage": "All regions, excepting territories overseas.",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "limited_delivery_area"
+      ]
+    },
+    {
+      "code": "SG",
+      "name": "Singapore",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 2,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "IS",
+      "name": "Iceland",
+      "service": "suspended",
+      "ead": "Mandatory HS codes recommended",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "carrier_suspended"
+      ]
+    },
+    {
+      "code": "IE",
+      "name": "Ireland",
+      "service": "accepted",
+      "ead": "Mandatory TARIC codes recommended",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "AZ",
+      "name": "Azerbaijan",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": null,
+      "name": "Ascension",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unmapped_region",
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "AF",
+      "name": "Afghanistan",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "AE",
+      "name": "United Arab Emirates",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "DZ",
+      "name": "Algeria",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "AR",
+      "name": "Argentina",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "AW",
+      "name": "Aruba",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "AL",
+      "name": "Albania",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "AM",
+      "name": "Armenia",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "AI",
+      "name": "Anguilla",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "AO",
+      "name": "Angola",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "AG",
+      "name": "Antigua and Barbuda",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "AD",
+      "name": "Andorra",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "YE",
+      "name": "Yemen",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "IL",
+      "name": "Israel",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 3,
+      "coverage": "Available for some areas",
+      "detailsUrl": "https://www.post.japanpost.jp/int/ems/country/israel_en.html",
+      "requiresReview": true,
+      "reasons": [
+        "limited_delivery_area"
+      ]
+    },
+    {
+      "code": "IT",
+      "name": "Italy",
+      "service": "accepted",
+      "ead": "Mandatory HS codes recommended",
+      "zone": 3,
+      "coverage": "All areas (Except for mail addressed to military post offices (bearing APO/FPO addresses)",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "limited_delivery_area"
+      ]
+    },
+    {
+      "code": "IQ",
+      "name": "Iraq",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "IR",
+      "name": "Iran",
+      "service": "suspended",
+      "ead": "Mandatory",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "carrier_suspended"
+      ]
+    },
+    {
+      "code": "IN",
+      "name": "India",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 2,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "ID",
+      "name": "Indonesia",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 2,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": null,
+      "name": "Wake Island",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unmapped_region",
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "UG",
+      "name": "Uganda",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "UA",
+      "name": "Ukraine",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 3,
+      "coverage": "Available for some areas",
+      "detailsUrl": "https://www.post.japanpost.jp/int/ems/country/ukraine_en.html",
+      "requiresReview": true,
+      "reasons": [
+        "limited_delivery_area"
+      ]
+    },
+    {
+      "code": "UZ",
+      "name": "Uzbekistan",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "UY",
+      "name": "Uruguay",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "VG",
+      "name": "British Virgin Islands",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "EC",
+      "name": "Ecuador",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "EG",
+      "name": "Egypt",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "EE",
+      "name": "Estonia",
+      "service": "accepted",
+      "ead": "Mandatory HS codes recommended",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "SZ",
+      "name": "Eswatini",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "ET",
+      "name": "Ethiopia",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "ER",
+      "name": "Eritrea",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "SV",
+      "name": "El Salvador",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "AT",
+      "name": "Austria",
+      "service": "accepted",
+      "ead": "Mandatory HS codes recommended",
+      "zone": 3,
+      "coverage": "All areas (Except for mail addressed to zip code 1502, 1503, and 1504)",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "limited_delivery_area"
+      ]
+    },
+    {
+      "code": "OM",
+      "name": "Oman",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "NL",
+      "name": "Netherlands",
+      "service": "accepted",
+      "ead": "Mandatory HS codes recommended",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "BQ",
+      "name": "Bonaire, Saba and Sint Eustatius",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "GH",
+      "name": "Ghana",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "CV",
+      "name": "Cape Verde",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "GG",
+      "name": "Guernsey",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "GY",
+      "name": "Guyana",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "KZ",
+      "name": "Kazakhstan",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "QA",
+      "name": "Qatar",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "GP",
+      "name": "Guadeloupe",
+      "service": "accepted",
+      "ead": "Mandatory CN codes recommended",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "CA",
+      "name": "Canada",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "GA",
+      "name": "Gabon",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "Available for some areas",
+      "detailsUrl": "https://www.post.japanpost.jp/int/ems/country/gabon_en.html",
+      "requiresReview": true,
+      "reasons": [
+        "limited_delivery_area"
+      ]
+    },
+    {
+      "code": "CM",
+      "name": "Cameroon",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "GM",
+      "name": "Gambia",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "KH",
+      "name": "Cambodia",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 2,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "KP",
+      "name": "North Korea",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "MK",
+      "name": "North Macedonia",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "MP",
+      "name": "Northern Mariana Islands",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "GN",
+      "name": "Guinea",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "GW",
+      "name": "Guinea-Bissau",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "CY",
+      "name": "Cyprus",
+      "service": "accepted",
+      "ead": "Mandatory HS codes recommended",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "CU",
+      "name": "Cuba",
+      "service": "suspended",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "carrier_suspended"
+      ]
+    },
+    {
+      "code": "CW",
+      "name": "Curacao",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "GR",
+      "name": "Greece",
+      "service": "accepted",
+      "ead": "Mandatory HS codes recommended",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "KI",
+      "name": "Kiribati",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "KG",
+      "name": "Kyrgyz",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "GT",
+      "name": "Guatemala",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "GU",
+      "name": "Guam",
+      "service": "restricted",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_restricted"
+      ]
+    },
+    {
+      "code": "KW",
+      "name": "Kuwait",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "CK",
+      "name": "Cook Islands",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 3,
+      "coverage": "Available in some areas; Rarotonga only.",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "limited_delivery_area"
+      ]
+    },
+    {
+      "code": "GL",
+      "name": "Greenland",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "CX",
+      "name": "Christmas Island",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone"
+      ]
+    },
+    {
+      "code": "GD",
+      "name": "Grenada",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "HR",
+      "name": "Croatia",
+      "service": "accepted",
+      "ead": "Mandatory HS codes recommended",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "KY",
+      "name": "Cayman Islands",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "KE",
+      "name": "Kenya",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "Available for some areas",
+      "detailsUrl": "https://www.post.japanpost.jp/int/ems/country/kenya_en.html",
+      "requiresReview": true,
+      "reasons": [
+        "limited_delivery_area"
+      ]
+    },
+    {
+      "code": "CI",
+      "name": "Ivory Coast",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "CC",
+      "name": "Cocos (Keeling) Islands",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone"
+      ]
+    },
+    {
+      "code": "CR",
+      "name": "Costa Rica",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": null,
+      "name": "Kosovo",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unmapped_region",
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "KM",
+      "name": "Comoros Islands",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "CO",
+      "name": "Colombia",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "CG",
+      "name": "Congo",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "CD",
+      "name": "The Democratic Republic of the Congo",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": null,
+      "name": "Saipan",
+      "service": "restricted",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unmapped_region",
+        "unconfirmed_zone",
+        "carrier_restricted"
+      ]
+    },
+    {
+      "code": "SA",
+      "name": "Saudi Arabia",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "WS",
+      "name": "Independent State of Samoa",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "ST",
+      "name": "Sao Tome and Principe",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "ZM",
+      "name": "Zambia",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "PM",
+      "name": "St. Pierre and Miquelon",
+      "service": "suspended",
+      "ead": "Mandatory",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "carrier_suspended"
+      ]
+    },
+    {
+      "code": "SM",
+      "name": "San Marino",
+      "service": "accepted",
+      "ead": "Mandatory HS codes recommended",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "SL",
+      "name": "Sierra Leone",
+      "service": "suspended",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "Under suspension",
+      "detailsUrl": "https://www.post.japanpost.jp/int/ems/country/sierraleone_en.html",
+      "requiresReview": true,
+      "reasons": [
+        "carrier_suspended",
+        "limited_delivery_area"
+      ]
+    },
+    {
+      "code": "DJ",
+      "name": "Djibouti",
+      "service": "suspended",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "carrier_suspended"
+      ]
+    },
+    {
+      "code": "GI",
+      "name": "Gibraltar",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "JE",
+      "name": "Jersey",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "JM",
+      "name": "Jamaica",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "GE",
+      "name": "Georgia",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "SY",
+      "name": "Syria",
+      "service": "suspended",
+      "ead": "Mandatory",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "carrier_suspended"
+      ]
+    },
+    {
+      "code": "SX",
+      "name": "Saint Maarten",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "ZW",
+      "name": "Zimbabwe",
+      "service": "suspended",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "carrier_suspended"
+      ]
+    },
+    {
+      "code": "CH",
+      "name": "Switzerland",
+      "service": "accepted",
+      "ead": "Mandatory HS codes recommended",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "SE",
+      "name": "Sweden",
+      "service": "accepted",
+      "ead": "Mandatory HS codes recommended",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "SD",
+      "name": "Sudan",
+      "service": "suspended",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "Available for some areas",
+      "detailsUrl": "https://www.post.japanpost.jp/int/ems/country/sudan_en.html",
+      "requiresReview": true,
+      "reasons": [
+        "carrier_suspended",
+        "limited_delivery_area"
+      ]
+    },
+    {
+      "code": "ES",
+      "name": "Spain",
+      "service": "accepted",
+      "ead": "Mandatory HS codes recommended",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "SR",
+      "name": "Suriname",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "LK",
+      "name": "Sri Lanka",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 2,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "SK",
+      "name": "Slovakia",
+      "service": "accepted",
+      "ead": "Mandatory HS codes recommended",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "SI",
+      "name": "Slovenia",
+      "service": "accepted",
+      "ead": "Mandatory HS codes recommended",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "SC",
+      "name": "Seychelles",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "GQ",
+      "name": "Equatorial Guinea",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "SN",
+      "name": "Senegal",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "RS",
+      "name": "Serbia",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "SH",
+      "name": "St. Helena",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "KN",
+      "name": "Saint Christopher and Nevis",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "VC",
+      "name": "Saint Vincent",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "LC",
+      "name": "Saint Lucia",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "SO",
+      "name": "Somalia",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "SB",
+      "name": "Solomon Islands",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 3,
+      "coverage": "Available for some areas",
+      "detailsUrl": "https://www.post.japanpost.jp/int/ems/country/solomon_en.html",
+      "requiresReview": true,
+      "reasons": [
+        "limited_delivery_area"
+      ]
+    },
+    {
+      "code": "TC",
+      "name": "Turks and Caicos",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "TJ",
+      "name": "Tajikistan",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "TZ",
+      "name": "Tanzania (United Rep.)",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "Available for some areas",
+      "detailsUrl": "https://www.post.japanpost.jp/int/ems/country/tanzania_en.html",
+      "requiresReview": true,
+      "reasons": [
+        "limited_delivery_area"
+      ]
+    },
+    {
+      "code": "CZ",
+      "name": "Czech Republic",
+      "service": "accepted",
+      "ead": "Mandatory HS codes recommended",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "TD",
+      "name": "Chad",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "CF",
+      "name": "Central Africa",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "TN",
+      "name": "Tunisia",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "CL",
+      "name": "Chile",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "TV",
+      "name": "Tuvalu",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "DK",
+      "name": "Denmark",
+      "service": "accepted",
+      "ead": "Mandatory HS codes recommended",
+      "zone": 3,
+      "coverage": "All regions. Greenland and the Faeroes are excepted.",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "limited_delivery_area"
+      ]
+    },
+    {
+      "code": "DE",
+      "name": "Germany",
+      "service": "accepted",
+      "ead": "Mandatory HS codes recommended",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "TG",
+      "name": "Togo",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "DM",
+      "name": "Dominica",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "DO",
+      "name": "Dominican Republic",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": null,
+      "name": "Tristan da Cunha",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unmapped_region",
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "TT",
+      "name": "Trinidad and Tobago",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "TM",
+      "name": "Turkmenistan",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "TR",
+      "name": "Turkey",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "TO",
+      "name": "Tonga",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "NG",
+      "name": "Nigeria",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "NR",
+      "name": "Nauru",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "NA",
+      "name": "Namibia",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "TF",
+      "name": "French Southern and Antarctic Territories",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "NI",
+      "name": "Nicaragua",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "NE",
+      "name": "Niger",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "NC",
+      "name": "New Caledonia",
+      "service": "suspended",
+      "ead": "Mandatory",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "carrier_suspended"
+      ]
+    },
+    {
+      "code": "NZ",
+      "name": "New Zealand",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 3,
+      "coverage": "All the territories except Niue, Tokelau Island and Ross Dependency",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "limited_delivery_area"
+      ]
+    },
+    {
+      "code": "NP",
+      "name": "Nepal",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 2,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "NF",
+      "name": "Norfolk Island",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone"
+      ]
+    },
+    {
+      "code": "NO",
+      "name": "Norway",
+      "service": "accepted",
+      "ead": "Mandatory HS codes recommended",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "BM",
+      "name": "Bermuda",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "BH",
+      "name": "Bahrain",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "HT",
+      "name": "Haiti",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "PK",
+      "name": "Pakistan",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 2,
+      "coverage": "Available for some areas",
+      "detailsUrl": "https://www.post.japanpost.jp/int/ems/country/pakistan_en.html",
+      "requiresReview": true,
+      "reasons": [
+        "limited_delivery_area"
+      ]
+    },
+    {
+      "code": "VA",
+      "name": "Vatican",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "PA",
+      "name": "Panama",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "VU",
+      "name": "Vanuatu",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "BS",
+      "name": "Bahamas",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "PG",
+      "name": "Papua New Guinea",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 3,
+      "coverage": "Available for some areas",
+      "detailsUrl": "https://www.post.japanpost.jp/int/ems/country/papuanewguinea_en.html",
+      "requiresReview": true,
+      "reasons": [
+        "limited_delivery_area"
+      ]
+    },
+    {
+      "code": "PW",
+      "name": "Palau",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "PY",
+      "name": "Paraguay",
+      "service": "suspended",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "carrier_suspended"
+      ]
+    },
+    {
+      "code": "BB",
+      "name": "Barbados",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "HU",
+      "name": "Hungary",
+      "service": "accepted",
+      "ead": "Mandatory HS codes recommended",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "BD",
+      "name": "Bangladesh",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 2,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "TL",
+      "name": "East Timor",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "PN",
+      "name": "Pitcairn",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "FJ",
+      "name": "Fiji",
+      "service": "suspended",
+      "ead": "Mandatory",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "carrier_suspended"
+      ]
+    },
+    {
+      "code": "FI",
+      "name": "Finland",
+      "service": "accepted",
+      "ead": "Mandatory HS codes recommended",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "BT",
+      "name": "Bhutan",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 2,
+      "coverage": "Available for some areas",
+      "detailsUrl": "https://www.post.japanpost.jp/int/ems/country/bhutan_en.html",
+      "requiresReview": true,
+      "reasons": [
+        "limited_delivery_area"
+      ]
+    },
+    {
+      "code": "PR",
+      "name": "Puerto Rico",
+      "service": "restricted",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_restricted"
+      ]
+    },
+    {
+      "code": "FO",
+      "name": "Faroe Islands",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "FK",
+      "name": "Falkland",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "GF",
+      "name": "French Guiana",
+      "service": "accepted",
+      "ead": "Mandatory CN codes recommended",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "PF",
+      "name": "French Polynesia",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "BR",
+      "name": "Brazil",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "FR",
+      "name": "France",
+      "service": "accepted",
+      "ead": "Mandatory CN codes recommended",
+      "zone": 3,
+      "coverage": "All Territories (Including Overseas Departments, but excluding Overseas Territories). (Some of the territories are subject to a different price.)",
+      "detailsUrl": "https://www.post.japanpost.jp/int/ems/country/france_en.html",
+      "requiresReview": true,
+      "reasons": [
+        "limited_delivery_area"
+      ]
+    },
+    {
+      "code": "BG",
+      "name": "Bulgaria",
+      "service": "accepted",
+      "ead": "Mandatory HS codes recommended",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "BF",
+      "name": "Burkina Faso",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "BN",
+      "name": "Brunei",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 2,
+      "coverage": "Available for some areas",
+      "detailsUrl": "https://www.post.japanpost.jp/int/ems/country/brunei_en.html",
+      "requiresReview": true,
+      "reasons": [
+        "limited_delivery_area"
+      ]
+    },
+    {
+      "code": "BI",
+      "name": "Burundi",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "VI",
+      "name": "Virgin Islands",
+      "service": "restricted",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_restricted"
+      ]
+    },
+    {
+      "code": "AS",
+      "name": "American Samoa",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "VN",
+      "name": "Viet Nam",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 2,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "BJ",
+      "name": "Benin",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "VE",
+      "name": "Venezuela",
+      "service": "suspended",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "carrier_suspended"
+      ]
+    },
+    {
+      "code": "BY",
+      "name": "Belarus",
+      "service": "suspended",
+      "ead": "Mandatory",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "carrier_suspended"
+      ]
+    },
+    {
+      "code": "BZ",
+      "name": "Belize",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "PE",
+      "name": "Peru",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "BE",
+      "name": "Belgium",
+      "service": "accepted",
+      "ead": "Mandatory HS codes recommended",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "PL",
+      "name": "Poland",
+      "service": "accepted",
+      "ead": "Mandatory HS codes recommended",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "BA",
+      "name": "Bosnia and Herzegovina",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": null,
+      "name": "North Islands",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unmapped_region",
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "BW",
+      "name": "Botswana",
+      "service": "suspended",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "Available for some areas",
+      "detailsUrl": "https://www.post.japanpost.jp/int/ems/country/botswana_en.html",
+      "requiresReview": true,
+      "reasons": [
+        "carrier_suspended",
+        "limited_delivery_area"
+      ]
+    },
+    {
+      "code": "BO",
+      "name": "Bolivia",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "PT",
+      "name": "Portugal",
+      "service": "accepted",
+      "ead": "Mandatory HS codes recommended",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "HN",
+      "name": "Honduras",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "MH",
+      "name": "Marshall Islands",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "MO",
+      "name": "Macao",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 2,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "MG",
+      "name": "Madagascar",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "Available for some areas",
+      "detailsUrl": "https://www.post.japanpost.jp/int/ems/country/madagascar_en.html",
+      "requiresReview": true,
+      "reasons": [
+        "limited_delivery_area"
+      ]
+    },
+    {
+      "code": "MW",
+      "name": "Malawi",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "ML",
+      "name": "Mali",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "MT",
+      "name": "Malta",
+      "service": "accepted",
+      "ead": "Mandatory HS codes recommended",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "MQ",
+      "name": "Martinique",
+      "service": "accepted",
+      "ead": "Mandatory CN codes recommended",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "MY",
+      "name": "Malaysia",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 2,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "IM",
+      "name": "Isle of Man",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone"
+      ]
+    },
+    {
+      "code": "FM",
+      "name": "Federated States of Micronesia",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": null,
+      "name": "Midway Islands",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unmapped_region",
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "ZA",
+      "name": "South Africa",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "SS",
+      "name": "South Sudan",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "MM",
+      "name": "Myanmar",
+      "service": "suspended",
+      "ead": "Mandatory",
+      "zone": 2,
+      "coverage": "Available for some areas",
+      "detailsUrl": "https://www.post.japanpost.jp/int/ems/country/myanmar_en.html",
+      "requiresReview": true,
+      "reasons": [
+        "carrier_suspended",
+        "limited_delivery_area"
+      ]
+    },
+    {
+      "code": "MX",
+      "name": "Mexico",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "MU",
+      "name": "Mauritius",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "MR",
+      "name": "Mauritania",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "MZ",
+      "name": "Mozambique",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "MC",
+      "name": "Monaco",
+      "service": "accepted",
+      "ead": "Mandatory HS codes recommended",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "MV",
+      "name": "Maldives",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 2,
+      "coverage": "Available for some areas",
+      "detailsUrl": "https://www.post.japanpost.jp/int/ems/country/maldives_en.html",
+      "requiresReview": true,
+      "reasons": [
+        "limited_delivery_area"
+      ]
+    },
+    {
+      "code": "MD",
+      "name": "Moldova",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "MA",
+      "name": "Morocco",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "MN",
+      "name": "Mongolia",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 2,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "ME",
+      "name": "Montenegro",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "MS",
+      "name": "Montserrat",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "JO",
+      "name": "Jordan",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "LA",
+      "name": "Lao People's Democratic Republic",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 2,
+      "coverage": "Available for some areas",
+      "detailsUrl": "https://www.post.japanpost.jp/int/ems/country/laos_en.html",
+      "requiresReview": true,
+      "reasons": [
+        "limited_delivery_area"
+      ]
+    },
+    {
+      "code": "LV",
+      "name": "Latvia",
+      "service": "accepted",
+      "ead": "Mandatory HS codes recommended",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "LT",
+      "name": "Lithuania",
+      "service": "accepted",
+      "ead": "Mandatory HS codes recommended",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "LY",
+      "name": "Libya",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "LI",
+      "name": "Liechtenstein",
+      "service": "accepted",
+      "ead": "Mandatory HS codes recommended",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "LR",
+      "name": "Liberia",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "RO",
+      "name": "Romania",
+      "service": "accepted",
+      "ead": "Mandatory HS codes recommended",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "LU",
+      "name": "Luxembourg",
+      "service": "accepted",
+      "ead": "Mandatory HS codes recommended",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "RW",
+      "name": "Rwanda",
+      "service": "suspended",
+      "ead": "Mandatory",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "carrier_suspended"
+      ]
+    },
+    {
+      "code": "LS",
+      "name": "Lesotho",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    },
+    {
+      "code": "LB",
+      "name": "Lebanon",
+      "service": "accepted",
+      "ead": "Mandatory",
+      "zone": 3,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "RE",
+      "name": "Reunion",
+      "service": "accepted",
+      "ead": "Mandatory CN codes recommended",
+      "zone": 5,
+      "coverage": "All areas",
+      "detailsUrl": null,
+      "requiresReview": false,
+      "reasons": []
+    },
+    {
+      "code": "RU",
+      "name": "Russian Federation",
+      "service": "suspended",
+      "ead": "Mandatory",
+      "zone": 3,
+      "coverage": "Available for some areas",
+      "detailsUrl": "https://www.post.japanpost.jp/int/ems/country/russia_en.html",
+      "requiresReview": true,
+      "reasons": [
+        "carrier_suspended",
+        "limited_delivery_area"
+      ]
+    },
+    {
+      "code": "WF",
+      "name": "Wallis and Futuna",
+      "service": "unavailable",
+      "ead": "Mandatory",
+      "zone": null,
+      "coverage": "",
+      "detailsUrl": null,
+      "requiresReview": true,
+      "reasons": [
+        "unconfirmed_zone",
+        "carrier_unavailable"
+      ]
+    }
+  ]
+}
