@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { readFileSync } from 'node:fs';
 import { encodeAddress } from '@polkadot/util-crypto';
 import { OrderStore, validateConfig, createCatalogRefresher, type MerchantConfig, type CreateOrder, type OrderView } from '../../dist/relay/index.js';
 import type { FinalizedTransferEvidence } from '../../dist/core/index.js';
+import { syntheticMerchant } from './fixtures.ts';
 
-const template = JSON.parse(readFileSync(new URL('../../deploy/merchant.polkaswap.json.example', import.meta.url), 'utf8')) as MerchantConfig;
+const template = syntheticMerchant();
 const payer = encodeAddress(new Uint8Array(32).fill(1), 69);
 const now = Date.parse('2026-09-27T00:00:00.000Z');
 
@@ -16,6 +16,7 @@ function config(approved?: string[]): MerchantConfig {
   delete value.approvedShippingCountries;
   if (approved !== undefined) value.approvedShippingCountries = approved;
   value.refundPolicy = { version: 1, mode: 'full' };
+  value.providers = { shipping: 'japan-post-ems' };
   value.shipping = [
     { id: 'ems-zone-1-500', countries: ['JP', 'KR'], maxGrams: 500, priceXor: '0.5', label: 'Synthetic zone 1', reviewedAt: '2026-09-27' },
     { id: 'ems-zone-2-500', countries: ['US'], maxGrams: 500, priceXor: '0.75', label: 'Synthetic zone 2', reviewedAt: '2026-09-27' },
@@ -76,7 +77,7 @@ test('approval intersects every band and explicit blocks without changing config
     assert.deepEqual(value.shipping, original);
     assert.throws(() => orders.create(input('US', 'ems-zone-2-500')), /Shipping inquiry required/);
     assert.throws(() => orders.create(input('KR')), /Shipping inquiry required/);
-    assert.equal(orders.create(input()).paymentRequest.amountCodec, '2259225000000000000');
+    assert.equal(orders.create(input()).paymentRequest.amountCodec, '1500000000000000000');
   } finally { orders.close(); }
 });
 

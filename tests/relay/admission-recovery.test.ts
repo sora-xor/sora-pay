@@ -15,15 +15,15 @@ const now = Date.parse('2026-09-26T00:00:00.000Z');
 async function fixture(options: { ready?: () => boolean; admissionReady?: () => boolean; resetAdmission?: () => void } = {}) {
   const config = validateConfig({
     enabled: true, fulfillmentMode: 'on-demand', version: 'admission-test',
-    merchant: { id: 'test', name: 'Test', operatorName: 'Test', supportTelegram: 'sora_xor', dispatchPolicy: 'Test', customsPolicy: 'Test', privacyPolicy: 'Test', cancellationPolicy: 'Test' },
+    merchant: { id: 'test', name: 'Test', operatorName: 'Test', supportTelegram: 'example_support', dispatchPolicy: 'Test', customsPolicy: 'Test', privacyPolicy: 'Test', cancellationPolicy: 'Test' },
     pricing: { kind: 'exact-xor', version: 'test', jpyPerUsd: '', usdPerXor: '', fxSource: '', fxDate: '' },
-    product: { id: 'tea', name: 'Tea', grams: 100, packedGrams: 120, priceXor: '1' },
+    product: { id: 'example-item', name: 'Example item', grams: 100, packedGrams: 120, priceXor: '1' },
     shipping: [{ id: 'jp', countries: ['JP'], maxGrams: 500, priceXor: '0', label: 'Test', reviewedAt: '2026-09-26' }],
     chain: { genesisHash: `0x${'a'.repeat(64)}`, assetId: NATIVE_XOR, decimals: 18, denomination: '1', recipient, rpcUrl: 'wss://example.test', startBlock: 100 },
-    allowedOrigins: ['https://polkaswap.io'], retentionDays: 30,
+    allowedOrigins: ['https://merchant.example'], retentionDays: 30,
   });
   const store = new OrderStore(':memory:', config, Buffer.alloc(32, 7), () => now);
-  const input = () => ({ productId: 'tea', quantity: 1, shippingRateId: 'jp', payer, idempotencyKey: randomUUID(), address: { name: 'Synthetic Customer', line1: 'Synthetic Delivery Street', city: 'Synthetic', country: 'JP' }, contact: { type: 'telegram' as const, value: '@synthetic' } });
+  const input = () => ({ productId: 'example-item', quantity: 1, shippingRateId: 'jp', payer, idempotencyKey: randomUUID(), address: { name: 'Synthetic Customer', line1: 'Synthetic Delivery Street', city: 'Synthetic', country: 'JP' }, contact: { type: 'telegram' as const, value: '@synthetic' } });
   const cancelInput = input();
   const cancelOrder = store.create(cancelInput);
   const cancelLease = store.paymentAttempt(cancelOrder.orderId, cancelOrder.recoveryToken);
@@ -42,7 +42,7 @@ async function fixture(options: { ready?: () => boolean; admissionReady?: () => 
   const request = async (path: string, body?: unknown, token?: string) => {
     const response = await fetch(origin + path, {
       method: body === undefined ? 'GET' : 'POST',
-      headers: { Origin: 'https://polkaswap.io', ...(body === undefined ? {} : { 'Content-Type': 'application/json' }), ...(token === undefined ? {} : { Authorization: `Bearer ${token}` }) },
+      headers: { Origin: 'https://merchant.example', ...(body === undefined ? {} : { 'Content-Type': 'application/json' }), ...(token === undefined ? {} : { Authorization: `Bearer ${token}` }) },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       signal: AbortSignal.timeout(3000),
     });

@@ -2,11 +2,17 @@
 
 Native SORA XOR payments for static websites. Sora Pay contains an exact-arithmetic TypeScript core, a dependency-free browser widget, and a private merchant relay. It is Apache-2.0 licensed. The relay verifies finalized chain events and delivers private fulfillment messages; it never holds wallet spending keys.
 
+## 0.2.5
+
+The toolkit contains reusable payment interfaces, a browser widget, the private relay, optional data providers and neutral deployment examples. Merchant catalogs, destination rules, fulfillment runbooks and host-specific deployment records belong in the integrating application's repository. Staging requires an explicit merchant configuration; pricing conversion requires an explicit merchant-selected USD/XOR rate.
+
+Storage admission thresholds are merchant configuration. Optional `storageResumeFreeBytes` sets the startup/reset reserve and must be at least `storageMinimumFreeBytes`; omission uses the configured minimum. When migrating an installation that relied on the former implicit 10 GiB startup/reset floor, set `storageResumeFreeBytes` to `"10737418240"` explicitly (or the existing minimum if higher) before adopting 0.2.5. Saved pauses still require an authenticated reset.
+
 ## 0.2.4
 
-The merchant relay now refreshes Japan Post availability by the configured service: EMS, air/surface parcels and air/surface small packets. Reviewed restricted routes such as US merchandise retain their documented dispatch requirements; a changed carrier restriction closes that route until reviewed. Every XOR price remains frozen. Domestic Japan can use separately priced Letter Pack Plus envelopes.
+The merchant relay now refreshes Japan Post availability by the configured service: EMS, air/surface parcels and air/surface small packets. Restricted routes require an explicit review bound to the carrier snapshot; a changed restriction closes the route until reviewed. Exact-XOR catalog amounts remain frozen. Domestic Japan can use separately priced Letter Pack Plus envelopes.
 
-The Polkaswap worldwide catalog and destination handling records are in `deploy/merchant.polkaswap-worldwide.json.example` and [the shipping runbook](docs/shipping-destinations.md). The browser/payment/receipt contract is unchanged, so existing 0.2.2 storefront bundles remain compatible. No new customer declaration is introduced.
+The browser/payment/receipt contract is unchanged, so existing 0.2.2 storefront bundles remain compatible. Merchants maintain their own route approvals and dispatch requirements outside the provider library.
 
 ## 0.2.2
 
@@ -47,17 +53,17 @@ corepack yarn --version # Must print 4.10.3.
 corepack yarn install --immutable
 corepack yarn build
 corepack yarn test
-corepack yarn pack --out sora-pay-0.2.4.tgz
-corepack yarn check:package sora-pay-0.2.4.tgz
+corepack yarn pack --out sora-pay-0.2.5.tgz
+corepack yarn check:package sora-pay-0.2.5.tgz
 ```
 
 The package check uses Python 3's standard library, validates the public file allowlist and required provider snapshots, and preserves the root Apache license. It rejects private files, internal reports, and nested staging README/license files. Run it before copying or publishing an archive.
 
-`@sora/sora-pay/core` and `@sora/sora-pay/widget` are browser ESM exports. `@sora/sora-pay/relay` and `@sora/sora-pay/providers` are Node-only. The package contains compiled JavaScript/declarations, source, provider snapshots, deployment templates, documentation, examples and the license. Published consumers should pin `0.2.4`, or vendor the generated versioned archive with a recorded checksum. Never use a sibling-directory dependency in an IPFS production build. The core and widget have no runtime imports outside this package; a static server can serve their compiled ESM files directly.
+`@sora/sora-pay/core` and `@sora/sora-pay/widget` are browser ESM exports. `@sora/sora-pay/relay` and `@sora/sora-pay/providers` are Node-only. The package contains compiled JavaScript/declarations, source, provider snapshots, deployment templates, documentation, examples and the license. Published consumers should pin `0.2.5`, or vendor the generated versioned archive with a recorded checksum. Never use a sibling-directory dependency in an IPFS production build. The core and widget have no runtime imports outside this package; a static server can serve their compiled ESM files directly.
 
 Run a static server from the repository root and open `examples/basic/index.html` to try the explicitly labeled offline demonstration. Its mock adapter never connects a wallet or transfers funds. HTTPS or localhost is required for the widget's Web Locks submission guard.
 
-For an existing-wallet integration, see the [Polkaswap adapter example](examples/polkaswap/README.md). It reproduces the actual host adapter and saved-order mounting flow, including wallet observers, exact fee/amount checks, `transaction.txId`, and relay signing-lease recovery.
+For an existing-wallet integration, see the [Polkaswap adapter example](examples/polkaswap/README.md). It illustrates the host adapter and saved-order mounting flow, including wallet observers, exact fee/amount checks, `transaction.txId`, and relay signing-lease recovery.
 
 ## Browser integration
 
@@ -99,7 +105,7 @@ The example's `loadOrderFromTrustedMerchant` and `reportTransactionHint` are hos
 - `estimateFee(request)`, returning exact XOR `amountCodec` for the same constrained transfer.
 - `submit(request)`, returning a lowercase transaction hash after submission. It must recheck account, chain, recipient, native asset, amount, expiry and denomination immediately before signing.
 
-For the current Polkaswap SDK the comment-bearing transfer is `api.assets.transfer(asset, recipient, naturalAmount, { feeType: 'xor', comment: request.reference })`, which constructs `liquidityProxy.xorlessTransfer`. The [actual adapter example](examples/polkaswap/README.md) converts with `fromCodec` and verifies `new FPNumber(amount, request.decimals).toCodecString()` equals the original amount before invoking the SDK. Do not use floating-point numbers, market price feeds, arbitrary call data, user-supplied asset IDs or a hypothetical `transferWithComment` function.
+For the current Polkaswap SDK the comment-bearing transfer is `api.assets.transfer(asset, recipient, naturalAmount, { feeType: 'xor', comment: request.reference })`, which constructs `liquidityProxy.xorlessTransfer`. The [adapter example](examples/polkaswap/README.md) converts with `fromCodec` and verifies `new FPNumber(amount, request.decimals).toCodecString()` equals the original amount before invoking the SDK. Do not use floating-point numbers, market price feeds, arbitrary call data, user-supplied asset IDs or a hypothetical `transferWithComment` function.
 
 Only throw `WalletNotSubmittedError` when the adapter can prove no transaction was broadcast, such as a specifically identified pre-broadcast user cancellation. Generic transport failures, timeouts, disconnects and unknown errors are uncertain; never classify them as cancellation based only on an arbitrary error message.
 
@@ -112,24 +118,28 @@ The widget durably records public submission intent before asking the wallet to 
 ```ts
 import { toCodec } from '@sora/sora-pay/core';
 
-// The Polkaswap merchant catalog keeps this exact unit price until explicitly repriced.
-const unitXor = '1.759225';
-const unitCodec = toCodec(unitXor, 18); // '1759225000000000000'
+// Illustrative merchant-selected amount, independent of the widget.
+const unitXor = '2.5';
+const unitCodec = toCodec(unitXor, 18); // '2500000000000000000'
 ```
 
-The Polkaswap store uses `pricing.kind: exact-xor`: **1.759225 XOR per bag**, with separate fixed XOR shipping bands. These amounts remain unchanged until the merchant explicitly publishes a new catalog version. The one-time calculation `ceil(1500 / 158.78 / 5.37 * 1e6) / 1e6` is internal launch audit information; the public catalog exposes only `{kind: 'exact-xor', version}` for pricing policy. Neither fiat values nor exchange rates appear in the storefront. Japan Post availability refreshes can remove unsupported destinations but cannot change saved XOR tariffs.
+Use `pricing.kind: exact-xor` to publish exact product and shipping amounts. They remain fixed until the merchant changes the catalog and advances `pricing.version`. Public pricing metadata is `{kind: 'exact-xor', version}`; internal conversion inputs are not exposed. Availability refreshes may remove unavailable destinations without changing published XOR tariffs or saved order amounts.
 
-Other merchants may use the generic `convertJpyToXor` helper, a fixed USD/XOR credit, and `pricing.kind: jpy-fixed-usd` with `mode: launch-fixed` or the optional daily MUFG provider. Polkaswap does not use runtime MUFG repricing. Each saved order's amount remains immutable. No amount helper fetches market XOR prices. `toCodec` rejects precision loss and uint128 overflow; `fromCodec` produces an exact decimal string. A denomination snapshot change invalidates the old quote instead of silently rescaling the amount being signed. See [official FX and EMS provider documentation](docs/providers.md) for freshness, provenance and unavailable destinations.
+For fiat-referenced pricing, the optional `convertJpyToXor` helper and `pricing.kind: jpy-fixed-usd` require an explicit merchant-selected `usdPerXor`. Choose `mode: launch-fixed` or the optional daily MUFG provider. Neither the widget nor the helpers choose a merchant credit rate or fetch a market XOR price. Persist the source snapshot and price version separately from the customer's immutable payment request.
+
+`toCodec` rejects precision loss and uint128 overflow; `fromCodec` produces an exact decimal string. A denomination snapshot change invalidates the old quote instead of silently rescaling the amount being signed. See [provider documentation](docs/providers.md) for conversion, freshness and shipping availability.
 
 ## Private merchant relay
 
 The Node 26 relay uses SQLite, encrypted private order records, authenticated order recovery and operator actions, finalized-chain scanning, and a durable delivery outbox. See the [relay operator runbook](docs/relay.md) and [disabled configuration template](deploy/merchant.disabled.json.example) for environment names and the startup command. SQLite files, encryption keys, authentication tokens, notification credentials and backups must stay outside any public/IPFS build.
 
-Verify the merchant wallet, operator/support details, shipping destinations and fixed XOR tariffs, fulfillment capacity, and private Telegram/email notification destination before enabling checkout. The Polkaswap store is operated by **Community Volunteers**, with public support only through [@sora_xor](https://t.me/sora_xor); its samples omit public support email and have the public recipient and fixed catalog prefilled but remain disabled. Other merchants may provide an optional public email, Telegram handle, or both; at least one valid support contact is required before enabling checkout. Public support never selects the private notification destination. Until private operational configuration is complete and the watcher is healthy, the store stays in browsing mode. The toolkit ships no private notification destination, credentials, or spending key.
+Configure the recipient, chain, operator identity, public support, catalog, shipping rules and private Telegram/email destination before enabling checkout. An enabled merchant must provide a valid public email, Telegram handle, or both. Public support never selects the private notification destination. The neutral template is disabled and contains no live merchant recipient, host or catalog. The toolkit ships no private notification credentials or wallet spending key.
 
-The [disabled Polkaswap configuration](deploy/merchant.polkaswap.json.example) keeps `wss://ws.mof.sora.org` as its primary RPC and explicitly selects the existing approved OVH archive at `wss://mof2.sora.org` for unavailable historical state. The primary remains authoritative for finality and canonical block hashes; archive responses must match its chain and block identity. A September 25, 2026 read-only probe verified historical event decoding 1,024 blocks behind the primary finalized head, beyond its 256-block state window. This does not enable payments or replace the paid-order/refund rehearsal. Generic merchant templates have no default archive endpoint; see the [archive recovery guidance](docs/relay.md).
+Select primary and, where needed, archive RPC endpoints explicitly. The primary is authoritative for finality and canonical block hashes; archive responses must match its chain and block identity. Missing history pauses new checkout without advancing the saved scan cursor. See [archive recovery guidance](docs/relay.md#configuration-and-startup).
 
-The merchant's order state is authoritative for fulfillment and refunds. A successful wallet callback is only submission. A notification outage must not discard an accepted order. The relay notifies a private volunteer destination automatically; assigned volunteers acknowledge orders and send tracking to the supplied customer contact. Telegram support handles are not bot chat identifiers. Refunds are separately approved obligations paid manually from the group wallet, protected by durable signing-attempt leases, and marked complete only after verified outgoing finalized evidence. New Polkaswap orders refund the XOR received, including shipping, minus the verified SORA network fee for sending the refund, capped at the quoted fee. The original payment fee is not refundable because the store never received it. Each order saves its refund-policy version; historical orders without a snapshot retain their full-refund terms. An overestimated refund fee leaves a separate fee-exempt amount owed to the customer. See the [refund accounting procedure](docs/relay.md#refund-accounting).
+The merchant's saved order is authoritative for fulfillment and refunds. A wallet callback proves submission only. Payment acceptance and notification work are persisted atomically; delivery failures are retried without discarding the order. Operators assign fulfillment and send acknowledgment/tracking through the customer's chosen contact method.
+
+Refunds are approved obligations signed with the merchant wallet, protected by durable signing-attempt leases, and settled only from finalized outgoing evidence. The relay supports full refunds and refunds net of the verified outbound network fee. Each order saves its policy version; historical orders without a snapshot keep full-refund terms. Overestimated network deductions remain owed as fee-exempt corrections. See the [refund accounting procedure](docs/relay.md#refund-accounting).
 
 ## Validation
 

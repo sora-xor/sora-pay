@@ -12,8 +12,8 @@ const filenames = [
 const read = (name: string): string => readFileSync(new URL(name, directory), 'utf8');
 const uncomment = (source: string): string => source.replace(/^\s*#.*$/gm, '').trim();
 const variable = '$sora_pay_admission_blocked';
-const mapPath = '/opt/homebrew/etc/nginx/snippets/sora-pay-admission-map.conf';
-const guardPath = '/opt/homebrew/etc/nginx/snippets/sora-pay-admission-guard.conf';
+const mapPath = '/etc/nginx/snippets/sora-pay-admission-map.conf';
+const guardPath = '/etc/nginx/snippets/sora-pay-admission-guard.conf';
 const id = '12345678-abcd-4abc-8abc-123456789abc';
 const orders = '/sora-pay/v1/orders';
 

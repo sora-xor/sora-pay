@@ -49,7 +49,7 @@ async function main(): Promise<void> {
     console.error(stage === 'reconcile' && error instanceof ArchiveRequiredError ? 'Relay archive_required: approved historical event source required; checkout paused and scan cursor preserved.' : `Relay ${stage} unavailable; checkout paused.`);
   });
   const admission = config.storageMinimumFreeBytes === undefined ? undefined : createStorageAdmissionGuard({
-    databasePath: dbPath, minimumFreeBytes: config.storageMinimumFreeBytes,
+    databasePath: dbPath, minimumFreeBytes: config.storageMinimumFreeBytes, resumeFreeBytes: config.storageResumeFreeBytes,
     persistence: { paused: (value) => store.storageAdmissionPaused(value) },
     onPersistenceError: () => console.error('Relay storage admission pause could not be persisted; new checkout remains closed.'),
   });

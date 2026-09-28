@@ -13,18 +13,20 @@ const third = encodeAddress(new Uint8Array(32).fill(3), 69);
 const key = Buffer.alloc(32, 7);
 const epoch = Date.parse('2026-09-25T00:00:00.000Z');
 function config() {
-  return validateConfig({ enabled: true, fulfillmentMode: 'on-demand', version: 'pilot-1', merchant: { id: 'test', name: 'Test merchant', operatorName: 'Test merchant', supportEmail: 'support@example.test', dispatchPolicy: 'Reviewed before dispatch', customsPolicy: 'Buyer customs charges', privacyPolicy: '30 days after completion', cancellationPolicy: 'Full XOR for unshippable orders' }, pricing: { version: 'fx-1', jpyPerUsd: '150', usdPerXor: '5.37', fxSource: 'https://example.test/fx', fxDate: '2026-09-25' }, product: { id: 'tea', name: 'Sencha', grams: 100, packedGrams: 120, packagingGrams: 80, priceJpy: '1500' }, shipping: [{ id: 'jp-500', countries: ['JP'], maxGrams: 500, priceJpy: '600', label: 'Test postal service', reviewedAt: '2026-09-25' }], chain: { genesisHash: '0x' + 'a'.repeat(64), assetId: NATIVE_XOR, decimals: 18, denomination: '1', recipient: bob, rpcUrl: 'wss://rpc.example.test', startBlock: 100 }, allowedOrigins: ['https://polkaswap.io'], retentionDays: 30 });
+  return validateConfig({ enabled: true, fulfillmentMode: 'on-demand', version: 'pilot-1', merchant: { id: 'test', name: 'Test merchant', operatorName: 'Test merchant', supportEmail: 'support@example.test', dispatchPolicy: 'Reviewed before dispatch', customsPolicy: 'Buyer customs charges', privacyPolicy: '30 days after completion', cancellationPolicy: 'Full XOR for unshippable orders' }, pricing: { version: 'fx-1', jpyPerUsd: '150', usdPerXor: '5.37', fxSource: 'https://example.test/fx', fxDate: '2026-09-25' }, product: { id: 'example-item', name: 'Example item', grams: 100, packedGrams: 120, packagingGrams: 80, priceJpy: '1500' }, shipping: [{ id: 'jp-500', countries: ['JP'], maxGrams: 500, priceJpy: '600', label: 'Test postal service', reviewedAt: '2026-09-25' }], chain: { genesisHash: '0x' + 'a'.repeat(64), assetId: NATIVE_XOR, decimals: 18, denomination: '1', recipient: bob, rpcUrl: 'wss://rpc.example.test', startBlock: 100 }, allowedOrigins: ['https://merchant.example'], retentionDays: 30 });
 }
-function input() { return { productId: 'tea', quantity: 1, shippingRateId: 'jp-500', payer: alice, idempotencyKey: randomUUID(), address: { name: 'Private Customer Name', line1: 'Secret Delivery Street', city: 'Shizuoka', postalCode: '420-0000', country: 'JP' }, contact: { type: 'email', value: 'private-customer@example.test' } }; }
+function input() { return { productId: 'example-item', quantity: 1, shippingRateId: 'jp-500', payer: alice, idempotencyKey: randomUUID(), address: { name: 'Private Customer Name', line1: 'Secret Delivery Street', city: 'Shizuoka', postalCode: '420-0000', country: 'JP' }, contact: { type: 'email', value: 'private-customer@example.test' } }; }
 function evidence(order, overrides = {}) { return { chainGenesisHash: order.paymentRequest.chainGenesisHash, assetId: NATIVE_XOR, payer: alice, recipient: bob, amountCodec: order.paymentRequest.amountCodec, reference: order.paymentRequest.reference, transactionHash: '0x' + '1'.repeat(64), blockHash: '0x' + '2'.repeat(64), blockNumber: '100', eventIndex: 0, successful: true, finalized: true, finalizedAt: new Date(epoch + 1000).toISOString(), ...overrides }; }
 function fixture(c = config()) { let now = epoch; const directory = mkdtempSync(join(tmpdir(), 'sora-pay-test-')); const path = join(directory, 'orders.sqlite'); const store = new OrderStore(path, c, key, () => now); return { store, path, tick: (ms) => { now += ms; }, cleanup: () => { store.close(); rmSync(directory, { recursive: true, force: true }); } }; }
 
-test('frozen $5.37 conversion rounds up exactly and native denomination does not multiply payment', () => {
-  assert.equal(xorPriceFromJpy('1500', '150'), '1.862198');
-  assert.equal(xorPriceFromJpy('0', '150'), '0.000000');
+test('explicit merchant conversion rounds up exactly and native denomination does not multiply payment', () => {
+  assert.equal(xorPriceFromJpy('1500', '150', '5.37'), '1.862198');
+  assert.equal(xorPriceFromJpy('0', '150', '5.37'), '0.000000');
+  assert.equal(xorPriceFromJpy('1500', '150', '10'), '1.000000');
+  assert.throws(() => xorPriceFromJpy('1500', '150', undefined as unknown as string));
   assert.equal(xorToCodec('1.862198', 18, '1000'), '1862198000000000000');
-  assert.throws(() => xorPriceFromJpy('1500', '0'));
-  assert.throws(() => xorPriceFromJpy('1e3', '150'));
+  assert.throws(() => xorPriceFromJpy('1500', '0', '5.37'));
+  assert.throws(() => xorPriceFromJpy('1e3', '150', '5.37'));
 });
 
 test('order persisted before payment, encrypted at rest, recoverable only by secret, idempotent retry', () => {
@@ -76,7 +78,7 @@ test('HTTP accepts UAE checkout without postal code but rejects malformed postal
   const server = createRelayServer(f.store, { operatorToken: 'o'.repeat(64), ready: () => true, trustLoopbackProxy: true });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve)); const base = `http://127.0.0.1:${server.address().port}`;
   const request = { ...input(), address: { ...input().address, city: 'Dubai', country: 'AE', postalCode: '' } };
-  const post = (value) => fetch(base + '/v1/orders', { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'https://polkaswap.io', 'X-Sora-Pay-Client-IP': '127.0.0.1' }, body: JSON.stringify(value) });
+  const post = (value) => fetch(base + '/v1/orders', { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'https://merchant.example', 'X-Sora-Pay-Client-IP': '127.0.0.1' }, body: JSON.stringify(value) });
   try {
     const response = await post(request); assert.equal(response.status, 201); const saved = await response.json();
     assert.equal(saved.status, 'awaiting_payment'); assert.equal(f.store.operatorOrder(saved.orderId).address.postalCode, '');
@@ -251,7 +253,7 @@ test('refund signing lease survives repeated obligation reads and an ambiguous b
   const f = fixture(); try { const order = f.store.create(input()); f.store.accept(evidence(order)); f.store.claim(order.orderId, 'a'); f.store.refund(order.orderId, 'a'); const lease = f.store.refundAttempt(order.orderId, 'a'); assert.throws(() => f.store.refundAttempt(order.orderId, 'a')); f.store.cancelRefundAttempt(order.orderId, 'a', lease.attemptToken); const next = f.store.refundAttempt(order.orderId, 'a'); f.store.refundTransactionHint(order.orderId, 'a', next.attemptToken, '0x'+'1'.repeat(64)); assert.throws(() => f.store.cancelRefundAttempt(order.orderId, 'a', next.attemptToken)); assert.equal(f.store.get(order.orderId, order.recoveryToken).refund.attempt, undefined); } finally { f.cleanup(); }
 });
 
-test('generic exact-XOR merchant and mandatory post-payment shipping review do not inherit tea pricing policy', () => {
+test('generic exact-XOR merchant and mandatory post-payment shipping review do not inherit an unrelated pricing policy', () => {
   const c = config(); c.pricing.kind = 'exact-xor'; c.pricing.jpyPerUsd = ''; c.pricing.fxSource = ''; c.pricing.fxDate = ''; c.product.priceXor = '2.5'; c.product.grams = 50; c.shipping[0].priceXor = '0.25'; c.reviewEveryPaidOrder = true;
   validateConfig(c); const f = fixture(c); try { const order = f.store.create(input()); assert.equal(order.paymentRequest.amountCodec, '2750000000000000000'); f.store.accept(evidence(order)); assert.equal(f.store.get(order.orderId, order.recoveryToken).status, 'shipping_review'); assert.equal(f.store.get(order.orderId, order.recoveryToken).reviewReason, 'shipping_check_required'); f.store.claim(order.orderId, 'a'); f.store.approve(order.orderId, 'a'); assert.equal(f.store.get(order.orderId, order.recoveryToken).status, 'paid'); } finally { f.cleanup(); }
 });

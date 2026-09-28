@@ -1,6 +1,6 @@
 # Polkaswap wallet adapter integration reference
 
-This example reproduces the actual host adapter and saved-order mounting flow implemented in [Polkaswap](https://github.com/sora-xor/polkaswap-exchange-web) alongside Sora Pay 0.1.0. The source paths are `src/features/store/walletAdapter.ts` and `src/features/store/useCommunityStore.ts` in that repository. The excerpts were checked against those files on September 25, 2026.
+This reference shows how [Polkaswap](https://github.com/sora-xor/polkaswap-exchange-web) connects its existing wallet to the reusable `WalletAdapter` and mounts a saved payment request. The host source paths are `src/features/store/walletAdapter.ts` and `src/features/store/useCommunityStore.ts`. Adapt the host bindings to the SDK version used by your application; merchant configuration is supplied separately.
 
 These TypeScript excerpts run inside Polkaswap, which provides Vue, the existing wallet SDK, `FPNumber`, chain configuration, and authenticated private-order transport. They are a host integration reference, not a second standalone wallet implementation or a script to paste into the plain HTML demo. `@/` refers to Polkaswap's `src/` directory. Sora Pay receives a narrow `WalletAdapter`; it never receives spending keys or an arbitrary signing callback.
 
@@ -8,9 +8,9 @@ These TypeScript excerpts run inside Polkaswap, which provides Vue, the existing
 
 `useInternalConnect()` provides `soraAddress`, `isLoggedIn`, and `connectSoraWallet`. `useTransaction().withNotifications` unlocks the existing wallet and reports its `TransactionNotificationResult`; `transaction.txId` is the submitted transaction hash. The merchant creates and privately saves an order first, then returns a validated `PaymentRequest` plus a separate recovery token. The host checks the recipient, merchant, mainnet genesis, native XOR asset, exact quoted amount, and denomination before mounting.
 
-The host's `storeRequest` sends private tokens in the `Authorization` header, uses only the release-configured relay URL, and never places a token or customer address in a URL. The order's random public reference is the only checkout information included in the transfer comment. The product price, shipping policy, operator identity, and fixed 1.759225 XOR tea price remain merchant policy; none belongs in the generic widget or adapter interface.
+The host's `storeRequest` sends private tokens in the `Authorization` header, uses only the release-configured relay URL, and never places a token or customer address in a URL. The order's random public reference is the only checkout information included in the transfer comment. Product prices, shipping rules, recipient selection and operator identity remain merchant policy; none is hardcoded in the widget or this adapter interface.
 
-## Actual wallet adapter
+## Wallet adapter bindings
 
 `getState()` checksum-validates and normalizes accounts, pins the SORA mainnet genesis, fetches current denomination/precision/spendable balance, and checks again after asynchronous reads. The account and network observer invalidates cached intent; every fee estimate and submission reads fresh state as well. Fees come from `paymentInfo` for the same constrained `liquidityProxy.xorlessTransfer` call. The signer path converts codec units to an exact decimal string and requires an exact `FPNumber` round trip. It does not multiply the amount by the denomination snapshot.
 

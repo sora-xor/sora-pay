@@ -1,6 +1,6 @@
 # After installing this overwriting header config, explicitly set SORA_PAY_TRUST_LOOPBACK_PROXY=1.
 # Keep the Node listener bound to loopback. Without opt-in it ignores all forwarded IP headers.
-# Include in approved HTTPS host only. Existing MOF RPC and IPFS locations stay intact.
+# Include in approved HTTPS host only. Preserve unrelated application locations.
 # Put limit_req_zone in the nginx http block, not inside a server/location block.
 # limit_req_zone $binary_remote_addr zone=sora_pay:10m rate=2r/s;
 location /v1/ {

@@ -1,6 +1,5 @@
-# Future pilot only. This is not a replacement for today's catalog-only gate.
-# Include inside the existing HTTPS server_name mof.sora.org block, adjacent
-# to its IPFS include. Requires nginx >= 1.29.3 and the pilot http include.
+# Public customer ingress with independently controlled admission.
+# Include inside the existing HTTPS merchant HTTPS server block. Requires nginx >= 1.29.3 and the pilot http include.
 # Keep the relay on loopback; explicitly enable its trusted-proxy setting only
 # after this overwriting header configuration is installed and verified.
 # Health stays on loopback. No server-level directives affect other paths.
@@ -50,7 +49,7 @@ location ^~ /sora-pay/v1/ {
     proxy_hide_header Cache-Control;
     add_header Cache-Control "no-store" always;
 
-    include /opt/homebrew/etc/nginx/snippets/sora-pay-admission-guard.conf;
+    include /etc/nginx/snippets/sora-pay-admission-guard.conf;
 
     limit_req zone=sora_pay_public burst=20 nodelay;
     limit_req_status 429;

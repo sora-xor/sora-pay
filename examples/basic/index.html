@@ -16,7 +16,7 @@
       <p>A static HTML page with a mocked wallet and mocked finalized-chain evidence. No wallet connection, funds transfer or merchant order is performed.</p>
       <div id="checkout"></div>
       <pre id="events" aria-live="polite"></pre>
-      <footer>The displayed accounts and chain are test fixtures. Never send funds to this example.</footer>
+      <footer>The amount, accounts and chain are synthetic fixtures, independent of any merchant catalog. Never send funds to this example.</footer>
     </main>
     <script type="module">
       import { NATIVE_XOR_ASSET_ID, toCodec } from '../../dist/core/index.js';
@@ -28,7 +28,7 @@
         chainGenesisHash: '0x' + 'a'.repeat(64), assetId: NATIVE_XOR_ASSET_ID,
         recipient: 'cnRsfMpGQ24tCKDLBbwde6NrS9ttrXN3hjX3zMHnVDeQokoBA',
         payer: 'cnSG3F5hh3Z5JzV2Qzn6Ez71CL8NUTi68wr9zrjdNedrJht1C',
-        amountCodec: toCodec('1.862198'), decimals: 18, denomination: '1', reference,
+        amountCodec: toCodec('2.5'), decimals: 18, denomination: '1', reference,
         expiresAt: new Date(Date.now() + 30 * 60_000).toISOString(),
       };
       const state = { account: request.payer, chainGenesisHash: request.chainGenesisHash, assetId: request.assetId, decimals: 18, denomination: '1', balanceCodec: toCodec('10') };

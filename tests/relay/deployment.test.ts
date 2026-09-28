@@ -10,21 +10,15 @@ import { validateConfig, type MerchantConfig } from '../../dist/relay/index.js';
 
 function temporary() { const directory=mkdtempSync(join(tmpdir(),'sora-pay-deploy-test-'));return {directory,cleanup:()=>rmSync(directory,{recursive:true,force:true})}; }
 
-test('Polkaswap binds its approved archive without replacing primary RPC or enabling checkout', () => {
- const config = JSON.parse(readFileSync(new URL('../../deploy/merchant.polkaswap-worldwide.json.example', import.meta.url), 'utf8')) as MerchantConfig;
+test('generic example is inactive and contains no preselected live merchant or chain', () => {
+ const config = JSON.parse(readFileSync(new URL('../../deploy/merchant.disabled.json.example', import.meta.url), 'utf8')) as MerchantConfig;
  assert.equal(config.enabled, false);
- assert.equal(config.chain.rpcUrl, 'wss://ws.mof.sora.org');
- assert.equal(config.chain.archiveRpcUrl, 'wss://mof2.sora.org');
- assert.equal(config.chain.genesisHash, '0x7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5');
- assert.equal(config.chain.recipient, 'cnWUWKLZmNjQXGzYAF7YuRSiW1pKTRTzu4fmcYmWQX6UMGQUZ');
- assert.equal(config.product.priceXor, '1.759225');
- const enabledCopy = { ...structuredClone(config), enabled: true };
- assert.doesNotThrow(() => validateConfig(enabledCopy));
- enabledCopy.chain.archiveRpcUrl = 'http://unapproved.example.test';
- assert.throws(() => validateConfig(enabledCopy), /TLS archive RPC/);
- const generic = JSON.parse(readFileSync(new URL('../../deploy/merchant.disabled.json.example', import.meta.url), 'utf8')) as MerchantConfig;
- assert.equal(generic.enabled, false);
- assert.equal(generic.chain.archiveRpcUrl, undefined);
+ assert.equal(config.chain.recipient, '');
+ assert.equal(config.chain.genesisHash, '');
+ assert.equal(config.providers, undefined);
+ assert.equal(config.pricing.kind, 'exact-xor');
+ assert.doesNotThrow(() => validateConfig(config));
+ assert.throws(() => validateConfig({ ...config, enabled: true }));
 });
 
 test('staging checksums reject changed runtime bytes before creating an output tree',async()=>{
@@ -32,38 +26,39 @@ test('staging checksums reject changed runtime bytes before creating an output t
   const archive=join(t.directory,'node.tar.xz');writeFileSync(archive,'corrupt archive');
   const digest=await fileSha256(archive);await verifyRuntimeArchive(archive,digest);
   await assert.rejects(()=>verifyRuntimeArchive(archive,'0'.repeat(64)),/runtime_checksum_mismatch/);
-  const output=join(t.directory,'output');await assert.rejects(()=>stageRelay({output,runtimeArchive:archive,installationRoot:'/Users/administrator/apps/sora-pay'}),/runtime_checksum_mismatch/);assert.equal(existsSync(output),false);
+  const output=join(t.directory,'output');await assert.rejects(()=>stageRelay({output,runtimeArchive:archive,installationRoot:'/opt/sora-pay',merchantConfig:new URL('../../deploy/merchant.disabled.json.example',import.meta.url).pathname}),/runtime_checksum_mismatch/);assert.equal(existsSync(output),false);
  }finally{t.cleanup();}
 });
 
-test('staging selects the worldwide merchant, forces it disabled and manifests public operational runbooks only',async()=>{
+test('staging requires explicit merchant input, disables it and stages only generic runbooks',async()=>{
  const t=temporary();try {
   const sourceRoot=join(t.directory,'source');const output=join(t.directory,'output');
   for(const path of ['dist/relay','node_modules/@polkadot/api','deploy','docs']) mkdirSync(join(sourceRoot,path),{recursive:true});
   for(const [path,content] of Object.entries({
-   'package.json':JSON.stringify({name:'@sora/sora-pay',version:'0.1.1'}),
+   'package.json':JSON.stringify({name:'@sora/sora-pay',version:'0.2.5'}),
    'yarn.lock':'synthetic lockfile','LICENSE':'synthetic license','dist/relay/cli.js':'// synthetic CLI',
-   'node_modules/@polkadot/api/package.json':'{}','deploy/merchant.polkaswap.json.example':'{"enabled":false,"version":"historical"}',
-   'deploy/merchant.polkaswap-worldwide.json.example':'{"enabled":true,"version":"worldwide"}',
-   'deploy/relay.env.example':'# synthetic environment','deploy/org.sora.sora-pay-relay.plist.example':'synthetic plist',
-   'deploy/run-relay.sh':'#!/bin/sh\nexit 0\n','docs/mof-readiness-internal.md':'internal fixture: do not stage',
-   'docs/shipping-destinations.md':'Synthetic public destination handling runbook',
+   'node_modules/@polkadot/api/package.json':'{}',
+   'deploy/merchant.disabled.json.example':'{"enabled":false,"version":"unused-example"}',
+   'deploy/relay.env.example':'SORA_PAY_CONFIG=__INSTALLATION_ROOT__/private/merchant.json',
+   'deploy/org.sora.sora-pay-relay.plist.example':'__INSTALLATION_ROOT__/deploy/run-relay.sh',
+   'deploy/run-relay.sh':'#!/bin/sh\nexit 0\n',
+   'docs/merchant-internal.md':'internal fixture: do not stage',
   })) writeFileSync(join(sourceRoot,path),content);
-  for(const name of ['relay.md','providers.md','staging.md','mof-capacity-policy.md']) {
-   writeFileSync(join(sourceRoot,'docs',name),readFileSync(new URL(`../../docs/${name}`,import.meta.url)));
-  }
+  for(const name of ['relay.md','providers.md','staging.md']) writeFileSync(join(sourceRoot,'docs',name),'Generic public guide');
+  const merchantConfig=join(t.directory,'merchant.json');
+  writeFileSync(merchantConfig,JSON.stringify({enabled:true,version:'selected-merchant'}));
   const runtimeRoot=join(t.directory,'runtime');mkdirSync(join(runtimeRoot,'test-node/bin'),{recursive:true});
   writeFileSync(join(runtimeRoot,'test-node/bin/node'),'synthetic runtime, never executed');
   const archive=join(t.directory,'node.tar.xz');execFileSync('tar',['-cJf',archive,'-C',runtimeRoot,'test-node']);
   writeFileSync(join(sourceRoot,'deploy/runtime.json'),JSON.stringify({version:'test',directory:'test-node',sha256:await fileSha256(archive)}));
-  const result=await stageRelay({sourceRoot,output,runtimeArchive:archive,installationRoot:'/synthetic/sora-pay'});
-  assert.deepEqual(JSON.parse(readFileSync(join(output,'private/merchant.json'),'utf8')),{enabled:false,version:'worldwide'});
-  assert.equal(readFileSync(join(output,'docs/mof-capacity-policy.md'),'utf8'),readFileSync(join(sourceRoot,'docs/mof-capacity-policy.md'),'utf8'));
-  assert.equal(readFileSync(join(output,'docs/shipping-destinations.md'),'utf8'),readFileSync(join(sourceRoot,'docs/shipping-destinations.md'),'utf8'));
+  await assert.rejects(()=>stageRelay({sourceRoot,output,runtimeArchive:archive,installationRoot:'/synthetic/sora-pay'}),/explicit_absolute_staging_paths_required/);
+  const result=await stageRelay({sourceRoot,output,runtimeArchive:archive,installationRoot:'/synthetic/sora-pay',merchantConfig});
+  assert.deepEqual(JSON.parse(readFileSync(join(output,'private/merchant.json'),'utf8')),{enabled:false,version:'selected-merchant'});
+  assert.equal(JSON.parse(readFileSync(merchantConfig,'utf8')).enabled,true);
+  assert.equal(readFileSync(join(output,'private/relay.env.example'),'utf8'),'SORA_PAY_CONFIG=/synthetic/sora-pay/private/merchant.json');
   const {manifest}=await verifyManifest(output,result.manifestSha256);
-  assert.ok(manifest.files.some((file:{path:string})=>file.path==='docs/mof-capacity-policy.md'));
-  assert.ok(manifest.files.some((file:{path:string})=>file.path==='docs/shipping-destinations.md'));
-  assert.equal(existsSync(join(output,'docs/mof-readiness-internal.md')),false);
+  assert.deepEqual(manifest.files.filter((file:{path:string;kind:string})=>file.path.startsWith('docs/')&&file.kind==='file').map((file:{path:string})=>file.path),['docs/providers.md','docs/relay.md','docs/staging.md']);
+  assert.equal(existsSync(join(output,'docs/merchant-internal.md')),false);
  }finally{t.cleanup();}
 });
 
@@ -79,7 +74,7 @@ test('deterministic staging inventory verifies bytes and refuses escaping symlin
 });
 
 test('staging accepts only documented explicit flags and rejects secret template fields',()=>{
- assert.deepEqual(stagingOptions(['--output','/tmp/stage','--runtime-archive','/tmp/node.tar.xz','--installation-root','/Users/operator/apps/sora-pay']),{output:'/tmp/stage',runtimeArchive:'/tmp/node.tar.xz',installationRoot:'/Users/operator/apps/sora-pay'});
+ assert.deepEqual(stagingOptions(['--output','/tmp/stage','--runtime-archive','/tmp/node.tar.xz','--installation-root','/opt/sora-pay','--merchant-config','/tmp/merchant.json']),{output:'/tmp/stage',runtimeArchive:'/tmp/node.tar.xz',installationRoot:'/opt/sora-pay',merchantConfig:'/tmp/merchant.json'});
  assert.throws(()=>stagingOptions(['--enable','yes']));assert.throws(()=>stagingOptions(['--output','/tmp/a','--output','/tmp/b']));
  assert.doesNotThrow(()=>assertNoSecretFields({merchant:{supportEmail:'test@example.test'}}));assert.throws(()=>assertNoSecretFields({privateKey:'do-not-copy'}));assert.throws(()=>assertNoSecretFields({transport:{password:'do-not-copy'}}));
  const runner=readFileSync(new URL('../../deploy/run-relay.sh',import.meta.url),'utf8');assert.match(runner,/runtime\/node-v26\.9\.0-darwin-arm64\/bin\/node/);assert.doesNotMatch(runner,/\/opt\/homebrew\/bin\/node/);

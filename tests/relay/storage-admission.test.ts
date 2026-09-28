@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createStorageAdmissionGuard, OrderStore, storageAdmissionAvailable, storageMinimumBytes, validateConfig } from '../../dist/relay/index.js';
 import type { MerchantConfig, StorageSpace } from '../../dist/relay/index.js';
+import { syntheticMerchant } from './fixtures.ts';
 
 const floor = 5n * 1024n ** 3n;
 const resumeFloor = 10n * 1024n ** 3n;
@@ -16,11 +17,32 @@ test('omitted storage guard never probes or changes reusable merchant metadata',
   assert.throws(() => guard.reset(), /not configured/);
 });
 
-test('new configured admission requires the 10 GiB reserve and only explicit reset releases a pause', () => {
+test('omitted resume threshold uses the merchant minimum for startup and reset below 10 GiB', () => {
+  const minimum = 1024n ** 3n;
+  let saved: boolean | undefined;
+  let free = minimum;
+  const persistence = { paused(value?: boolean) { if (value !== undefined) saved = value; return saved; } };
+  const start = () => createStorageAdmissionGuard({ databasePath: 'synthetic', minimumFreeBytes: minimum.toString(), persistence, probe: () => ({ bavail: free, bsize: 1n }) });
+  const guard = start();
+  assert.equal(guard.allowed(), true);
+  assert.equal(saved, false);
+  free = minimum - 1n;
+  assert.equal(guard.allowed(), false);
+  assert.throws(() => guard.reset(), /sufficient available space/);
+  free = minimum;
+  assert.equal(guard.allowed(), false);
+  assert.equal(start().allowed(), false, 'a saved pause must still survive startup at the default reserve');
+  guard.reset();
+  assert.equal(guard.allowed(), true);
+  assert.equal(saved, false);
+  assert.equal(start().allowed(), true);
+});
+
+test('configured admission requires its explicit resume reserve and only explicit reset releases a pause', () => {
   let saved: boolean | undefined;
   let free = resumeFloor - 1n;
   const persistence = { paused(value?: boolean) { if (value !== undefined) saved = value; return saved; } };
-  const guard = createStorageAdmissionGuard({ databasePath: 'synthetic', minimumFreeBytes: floor.toString(), persistence, probe: () => ({ bavail: free, bsize: 1n }) });
+  const guard = createStorageAdmissionGuard({ databasePath: 'synthetic', minimumFreeBytes: floor.toString(), resumeFreeBytes: resumeFloor.toString(), persistence, probe: () => ({ bavail: free, bsize: 1n }) });
   assert.equal(saved, true);
   assert.equal(guard.allowed(), false);
   assert.throws(() => guard.reset(), /sufficient available space/);
@@ -29,6 +51,8 @@ test('new configured admission requires the 10 GiB reserve and only explicit res
   guard.reset();
   assert.equal(saved, false);
   assert.equal(guard.allowed(), true);
+  free = floor;
+  assert.equal(guard.allowed(), true, 'ordinary admission uses the lower configured floor');
   free = floor - 1n;
   assert.equal(guard.allowed(), false);
   assert.equal(saved, true);
@@ -42,7 +66,7 @@ test('storage pause survives closing and reopening the actual SQLite database wi
   const config = { enabled: false } as MerchantConfig;
   let store = new OrderStore(path, config, Buffer.alloc(32, 3));
   let free = resumeFloor;
-  const makeGuard = () => createStorageAdmissionGuard({ databasePath: path, minimumFreeBytes: floor.toString(), persistence: { paused: (value) => store.storageAdmissionPaused(value) }, probe: () => ({ bavail: free, bsize: 1n }) });
+  const makeGuard = () => createStorageAdmissionGuard({ databasePath: path, minimumFreeBytes: floor.toString(), resumeFreeBytes: resumeFloor.toString(), persistence: { paused: (value) => store.storageAdmissionPaused(value) }, probe: () => ({ bavail: free, bsize: 1n }) });
   try {
     store.cursor(100);
     const first = makeGuard();
@@ -64,7 +88,7 @@ test('storage pause survives closing and reopening the actual SQLite database wi
 test('stat errors latch closed and failed persistence cannot release the in-memory pause', () => {
   let saved: boolean | undefined;
   let statFails = false; let writeFails = false; let reports = 0;
-  const guard = createStorageAdmissionGuard({ databasePath: 'synthetic', minimumFreeBytes: floor.toString(), persistence: { paused(value?: boolean) { if (value !== undefined) { if (writeFails) throw new Error('private database'); saved = value; } return saved; } }, probe: () => { if (statFails) throw new Error('private volume'); return { bavail: resumeFloor, bsize: 1n }; }, onPersistenceError: () => { reports++; } });
+  const guard = createStorageAdmissionGuard({ databasePath: 'synthetic', minimumFreeBytes: floor.toString(), resumeFreeBytes: resumeFloor.toString(), persistence: { paused(value?: boolean) { if (value !== undefined) { if (writeFails) throw new Error('private database'); saved = value; } return saved; } }, probe: () => { if (statFails) throw new Error('private volume'); return { bavail: resumeFloor, bsize: 1n }; }, onPersistenceError: () => { reports++; } });
   assert.equal(guard.allowed(), true);
   statFails = true; writeFails = true;
   assert.equal(guard.allowed(), false);
@@ -86,7 +110,7 @@ test('corrupt saved pause metadata fails closed without changing order data', ()
     store.db.prepare("INSERT INTO meta VALUES('storage-admission',?)").run('{"version":1,"paused":"false"}');
     assert.throws(() => store.storageAdmissionPaused(), /Invalid saved/);
     let reports = 0;
-    const guard = createStorageAdmissionGuard({ databasePath: 'synthetic', minimumFreeBytes: floor.toString(), persistence: { paused: (value) => store.storageAdmissionPaused(value) }, probe: () => ({ bavail: resumeFloor, bsize: 1n }), onPersistenceError: () => { reports++; } });
+    const guard = createStorageAdmissionGuard({ databasePath: 'synthetic', minimumFreeBytes: floor.toString(), resumeFreeBytes: resumeFloor.toString(), persistence: { paused: (value) => store.storageAdmissionPaused(value) }, probe: () => ({ bavail: resumeFloor, bsize: 1n }), onPersistenceError: () => { reports++; } });
     assert.equal(guard.allowed(), false);
     assert.equal(store.storageAdmissionPaused(), true);
     assert.equal(reports, 1);
@@ -99,7 +123,7 @@ test('restart at 6 GiB latches closed even when a previous pause write failed ov
   let free = resumeFloor;
   let writeFails = false;
   const persistence = { paused(value?: boolean) { if (value !== undefined) { if (writeFails) throw new Error('synthetic write failure'); saved = value; } return saved; } };
-  const start = () => createStorageAdmissionGuard({ databasePath: 'synthetic', minimumFreeBytes: floor.toString(), persistence, probe: () => ({ bavail: free, bsize: 1n }) });
+  const start = () => createStorageAdmissionGuard({ databasePath: 'synthetic', minimumFreeBytes: floor.toString(), resumeFreeBytes: resumeFloor.toString(), persistence, probe: () => ({ bavail: free, bsize: 1n }) });
   const original = start();
   assert.equal(original.allowed(), true);
   assert.equal(saved, false);
@@ -148,6 +172,25 @@ test('optional merchant storage floor preserves omission and rejects lossy or am
   assert.equal(validateConfig({ enabled: false } as MerchantConfig).storageMinimumFreeBytes, undefined);
   for (const value of ['0', '-1', '5.0', '5e9', ' 5368709120', '05368709120', '18446744073709551616', 5368709120, null]) {
     assert.throws(() => validateConfig({ enabled: false, storageMinimumFreeBytes: value } as MerchantConfig), /storage admission/);
+  }
+});
+
+test('storage threshold pairs validate exactly even while disabled and fail before reading storage', () => {
+  const maximum = '18446744073709551615';
+  for (const enabled of [false, true]) {
+    for (const [minimum, resume] of [[undefined, undefined], ['1', undefined], ['1', '1'], ['1', '2'], [maximum, maximum]]) {
+      const config = Object.assign(syntheticMerchant(), { enabled, storageMinimumFreeBytes: minimum, storageResumeFreeBytes: resume });
+      assert.doesNotThrow(() => validateConfig(config));
+    }
+    const invalid: Array<[unknown, unknown]> = [[undefined, '1'], ['2', '1'], [maximum, '18446744073709551614']];
+    for (const resume of ['0', '-1', '1.0', '1e9', ' 1', '01', '18446744073709551616', 1, null]) invalid.push(['1', resume]);
+    for (const [minimum, resume] of invalid) {
+      const config = Object.assign(syntheticMerchant(), { enabled, storageMinimumFreeBytes: minimum, storageResumeFreeBytes: resume });
+      assert.throws(() => validateConfig(config as MerchantConfig), /storage admission/);
+      const forbidden = () => assert.fail('invalid storage thresholds must not probe or read/write metadata');
+      const options = { databasePath: 'unused', minimumFreeBytes: minimum, resumeFreeBytes: resume, persistence: { paused: forbidden }, probe: forbidden };
+      assert.throws(() => createStorageAdmissionGuard(options as Parameters<typeof createStorageAdmissionGuard>[0]), /storage admission/);
+    }
   }
 });
 

@@ -28,8 +28,8 @@ SERVER_TEMPLATE = 'nginx/sora-pay-pilot-server.conf.example'
 GUARD_TEMPLATE = 'nginx/sora-pay-admission-guard.conf'
 OPEN_TEMPLATE = 'nginx/sora-pay-admission-open.map.conf'
 PAUSED_TEMPLATE = 'nginx/sora-pay-admission-paused.map.conf'
-MODE_INCLUDE = '/opt/homebrew/etc/nginx/snippets/sora-pay-admission-map.conf'
-GUARD_INCLUDE = '/opt/homebrew/etc/nginx/snippets/sora-pay-admission-guard.conf'
+MODE_INCLUDE = '/etc/nginx/snippets/sora-pay-admission-map.conf'
+GUARD_INCLUDE = '/etc/nginx/snippets/sora-pay-admission-guard.conf'
 ORDER = '11111111-1111-4111-8111-111111111111'
 
 
@@ -177,7 +177,7 @@ class SyntheticUpstream(BaseHTTPRequestHandler):
         self.send_header('X-Synthetic-Upstream', '1')
         self.send_header('X-Synthetic-Path', self.path)
         self.send_header('Cache-Control', 'no-store')
-        self.send_header('Access-Control-Allow-Origin', 'https://polkaswap.io')
+        self.send_header('Access-Control-Allow-Origin', 'https://merchant.example')
         self.send_header('Content-Type', 'application/json')
         self.send_header('Content-Length', str(0 if code == 204 else len(body)))
         self.end_headers()
@@ -221,7 +221,7 @@ class Probe:
         connection = http.client.HTTPConnection('127.0.0.1', self.port, timeout=2)
         try:
             connection.request(method, path, body=b'{}' if method in ('POST', 'PUT', 'PATCH') else None,
-                headers={'Content-Type': 'application/json', 'Origin': 'https://polkaswap.io',
+                headers={'Content-Type': 'application/json', 'Origin': 'https://merchant.example',
                          'X-Sora-Pay-Client-IP': '203.0.113.8', 'X-Forwarded-For': '203.0.113.9',
                          'Forwarded': 'for=203.0.113.10', 'X-Real-IP': '203.0.113.11',
                          'Connection': 'close'})
@@ -249,7 +249,7 @@ class Probe:
         else:
             require(headers.get('x-synthetic-upstream') == '1', 'upstream_not_reached')
             require(headers.get('x-synthetic-path') == upstream_path, 'upstream_path_mismatch')
-            require(headers.get('access-control-allow-origin') == 'https://polkaswap.io', 'cors_header_mismatch')
+            require(headers.get('access-control-allow-origin') == 'https://merchant.example', 'cors_header_mismatch')
             if method != 'OPTIONS':
                 echoed = json.loads(body)
                 forwarded = echoed['headers']

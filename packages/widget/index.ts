@@ -11,7 +11,7 @@ export interface WidgetMessages {
   uncertain: string; finalized: string; error: string; feeChanged: string; insufficientBalance: string;
 }
 
-/** English defaults for standalone installations; Polkaswap supplies its locale catalog. */
+/** English defaults for standalone installations; hosts may supply their own locale catalog. */
 export const DEFAULT_MESSAGES: WidgetMessages = {
   title: 'Pay with XOR', merchant: 'Merchant', amount: 'Payment', recipient: 'Recipient', payer: 'Paying account',
   chain: 'Network genesis', reference: 'Payment reference', expires: 'Quote expires', fee: 'Estimated network fee',

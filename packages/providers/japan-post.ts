@@ -188,7 +188,7 @@ export async function fetchJapanPostEms(options: FetchOptions = {}): Promise<Jap
   return snapshot;
 }
 
-/** Carrier status is not a legal tea-import approval. Only explicit merchant-approved ISO countries produce rates. */
+/** Carrier status is not a product-import approval. Only explicit merchant-approved ISO countries produce rates. */
 export function buildApprovedEmsRates(snapshot: JapanPostEmsSnapshot, approvedCountries: readonly string[]): Array<{ id: string; countries: string[]; maxGrams: number; priceJpy: string; label: string; reviewedAt: string }> {
   const approved = new Set(approvedCountries);
   if (approved.size !== approvedCountries.length || approvedCountries.some((code) => !isoSet.has(code))) throw new Error('invalid_approved_countries');

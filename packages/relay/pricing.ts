@@ -5,8 +5,8 @@ function ratio(value: string): [bigint, bigint] {
   return [BigInt(whole + part), 10n ** BigInt(part.length)];
 }
 
-/** Freeze merchant JPY reference prices at $5.37/XOR, rounded upward to six places. */
-export function xorPriceFromJpy(jpy: string, jpyPerUsd: string, usdPerXor = '5.37'): string {
+/** Convert a merchant JPY reference using explicitly supplied rates, rounding upward to six places. */
+export function xorPriceFromJpy(jpy: string, jpyPerUsd: string, usdPerXor: string): string {
   const [yen, yenScale] = ratio(jpy);
   const [fx, fxScale] = ratio(jpyPerUsd);
   const [credit, creditScale] = ratio(usdPerXor);

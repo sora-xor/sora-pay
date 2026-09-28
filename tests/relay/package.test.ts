@@ -42,6 +42,11 @@ test('public package check rejects nested staging readmes/licenses, private file
   checkFixture("for unsafe in ['output/staging/runtime/LICENSE', 'output/staging/README.md', 'private/relay.env', 'deploy/relay.env', 'docs/mof-readiness-2026-09-25.md', 'packages/relay/private/record.ts']:\n    reject({**entries, unsafe: b'fixture'})");
 });
 
-test('public package check rejects missing snapshots/examples, storage runbook or a missing/incorrect root license', () => {
-  checkFixture("for missing in ['packages/providers/data/japan-post-ems.json', 'packages/providers/data/mufg-usdjpy.json', 'examples/basic/index.html', 'examples/polkaswap/README.md', 'docs/mof-capacity-policy.md', 'LICENSE']:\n    reject({key: value for key, value in entries.items() if key != missing})\nreject({**entries, 'LICENSE': b'Incorrect license'})");
+test('public package check rejects missing snapshots/examples, generic runbook or a missing/incorrect root license', () => {
+  checkFixture("for missing in ['packages/providers/data/japan-post-ems.json', 'packages/providers/data/mufg-usdjpy.json', 'examples/basic/index.html', 'examples/polkaswap/README.md', 'docs/staging.md', 'LICENSE']:\n    reject({key: value for key, value in entries.items() if key != missing})\nreject({**entries, 'LICENSE': b'Incorrect license'})");
+});
+
+
+test('public package rejects merchant catalogs, fulfillment rules and removed merchant runtime artifacts', () => {
+  checkFixture("for merchant in ['docs/shipping-destinations.md', 'docs/mof-capacity-policy.md', 'docs/reports/worldwide-launch-2026-09-27.md', 'deploy/merchant.polkaswap.json.example', 'deploy/merchant.polkaswap-worldwide.json.example', 'deploy/build-worldwide-catalog.mjs', 'deploy/shipping/tea-destinations.json', 'dist/relay/shipping-rates.js', 'dist/relay/shipping-rates.js.map', 'packages/relay/shipping-rates.ts']:\n    reject({**entries, merchant: b'fixture'})");
 });

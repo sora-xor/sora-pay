@@ -15,7 +15,7 @@ function config(): MerchantConfig {
     enabled: true, fulfillmentMode: 'on-demand', version: 'retention-test',
     merchant: { id: 'test', name: 'Test', supportEmail: 'support@example.test', operatorName: 'Test', dispatchPolicy: 'Review before shipping', customsPolicy: 'Customer pays customs', privacyPolicy: '30 days', cancellationPolicy: 'Full XOR refund' },
     pricing: { kind: 'exact-xor', version: 'fixed', jpyPerUsd: '', usdPerXor: '', fxSource: '', fxDate: '' },
-    product: { id: 'tea', name: 'Sencha', grams: 100, packedGrams: 120, priceXor: '1.759225' },
+    product: { id: 'example-item', name: 'Example item', grams: 100, packedGrams: 120, priceXor: '1.759225' },
     shipping: [{ id: 'jp-500', countries: ['JP'], maxGrams: 500, priceXor: '1', label: 'Test', reviewedAt: '2026-09-25' }],
     chain: { genesisHash: `0x${'a'.repeat(64)}`, assetId: NATIVE_XOR, decimals: 18, denomination: '1', recipient, rpcUrl: 'wss://example.test', startBlock: 100 },
     allowedOrigins: ['https://example.test'], retentionDays: 30,
@@ -26,7 +26,7 @@ test('archive outage still removes due customer PII and runs durable notificatio
   let now = epoch;
   const store = new OrderStore(':memory:', config(), Buffer.alloc(32, 7), () => now);
   try {
-    const input = () => ({ productId: 'tea', quantity: 1, shippingRateId: 'jp-500', payer, idempotencyKey: randomUUID(), address: { name: 'Private Name', line1: 'Private Street', city: 'Tokyo', postalCode: '100-0000', country: 'JP' }, contact: { type: 'email' as const, value: 'private@example.test' } });
+    const input = () => ({ productId: 'example-item', quantity: 1, shippingRateId: 'jp-500', payer, idempotencyKey: randomUUID(), address: { name: 'Private Name', line1: 'Private Street', city: 'Tokyo', postalCode: '100-0000', country: 'JP' }, contact: { type: 'email' as const, value: 'private@example.test' } });
     const abandoned = store.create(input());
     const shipped = store.create(input());
     const request = shipped.paymentRequest;

@@ -3,12 +3,11 @@ import { createServer, request as httpRequest, type IncomingMessage, type Server
 const REQUEST_LIMIT = 16_384;
 const RESPONSE_LIMIT = 1_048_576;
 const TIMEOUT_MS = 15_000;
-const UPSTREAM_ORIGIN = 'https://polkaswap.io';
 const UUID = '[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}';
 const ORDER_PATH = new RegExp(`^/v1/orders/${UUID}(?:/(transaction|payment-attempt|payment-attempt/cancel))?$`);
 
 /** Local development endpoints only; the upstream is a separately established SSH forward. */
-export interface RehearsalProxyOptions { listenPort: number; upstream: string; frontendOrigin: string }
+export interface RehearsalProxyOptions { listenPort: number; upstream: string; frontendOrigin: string; upstreamOrigin: string }
 interface Configuration extends RehearsalProxyOptions { upstreamPort: number; expectedHost: string }
 interface Route { method: 'GET' | 'POST'; recovery: boolean }
 
@@ -28,23 +27,26 @@ function loopbackPort(value: string): number {
 
 /** Reject aliases, credentials, URL paths, port collisions, and externally bound configurations. */
 function configuration(options: RehearsalProxyOptions): Configuration {
-  const { listenPort, upstream, frontendOrigin } = options;
+  const { listenPort, upstream, frontendOrigin, upstreamOrigin } = options;
+  if (typeof upstreamOrigin !== 'string' || !upstreamOrigin.startsWith('https://')) throw new Error('Exact merchant HTTPS origin required');
+  const merchantOrigin = new URL(upstreamOrigin);
+  if (merchantOrigin.origin !== upstreamOrigin || merchantOrigin.username || merchantOrigin.password) throw new Error('Exact merchant HTTPS origin required');
   if (!Number.isInteger(listenPort) || listenPort < 1 || listenPort > 65_535 || listenPort === 80) throw new Error('Invalid proxy listen port');
   const upstreamPort = loopbackPort(upstream); const frontendPort = loopbackPort(frontendOrigin);
   if (new Set([listenPort, upstreamPort, frontendPort]).size !== 3) throw new Error('Rehearsal ports must be distinct');
-  return { listenPort, upstream, frontendOrigin, upstreamPort, expectedHost: `127.0.0.1:${listenPort}` };
+  return { listenPort, upstream, frontendOrigin, upstreamOrigin, upstreamPort, expectedHost: `127.0.0.1:${listenPort}` };
 }
 
-/** Parse exactly three explicit flags; importing this module never opens a listener. */
+/** Parse exactly four explicit flags; importing this module never opens a listener. */
 export function parseRehearsalProxyArguments(args: readonly string[]): RehearsalProxyOptions {
-  const values = new Map<string, string>(); const allowed = ['--listen-port', '--upstream', '--frontend-origin'];
+  const values = new Map<string, string>(); const allowed = ['--listen-port', '--upstream', '--frontend-origin', '--upstream-origin'];
   for (let index = 0; index < args.length; index += 2) {
     const name = args[index]; const value = args[index + 1];
     if (!name || !allowed.includes(name) || !value || values.has(name)) throw new Error('Expected explicit rehearsal proxy flags');
     values.set(name, value);
   }
-  if (values.size !== 3 || !/^[1-9][0-9]{0,4}$/.test(values.get('--listen-port') ?? '')) throw new Error('Expected explicit rehearsal proxy flags');
-  const options = { listenPort: Number(values.get('--listen-port')), upstream: values.get('--upstream')!, frontendOrigin: values.get('--frontend-origin')! };
+  if (values.size !== 4 || !/^[1-9][0-9]{0,4}$/.test(values.get('--listen-port') ?? '')) throw new Error('Expected explicit rehearsal proxy flags');
+  const options = { listenPort: Number(values.get('--listen-port')), upstream: values.get('--upstream')!, frontendOrigin: values.get('--frontend-origin')!, upstreamOrigin: values.get('--upstream-origin')! };
   configuration(options); return options;
 }
 
@@ -105,7 +107,7 @@ function forward(config: Configuration, path: string, route: Route, body: Buffer
   return new Promise((resolve, reject) => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const fail = (error: ProxyError): void => { clearTimeout(timer); reject(error); };
-    const headers: Record<string, string> = { Accept: 'application/json', Origin: UPSTREAM_ORIGIN, 'X-Sora-Pay-Client-IP': '127.0.0.1', Connection: 'close' };
+    const headers: Record<string, string> = { Accept: 'application/json', Origin: config.upstreamOrigin, 'X-Sora-Pay-Client-IP': '127.0.0.1', Connection: 'close' };
     if (route.method === 'POST') { headers['Content-Type'] = 'application/json'; headers['Content-Length'] = String(body.length); }
     if (route.recovery) headers.Authorization = authorization!;
     const upstream = httpRequest({ hostname: '127.0.0.1', port: config.upstreamPort, path, method: route.method, headers, agent: false, signal }, (response) => {

@@ -7,6 +7,7 @@ import { once } from 'node:events';
 import { parseRehearsalProxyArguments, startRehearsalProxy } from '../../dist/relay/rehearsal-proxy.js';
 
 const origin = 'http://127.0.0.1:5173';
+const upstreamOrigin = 'https://merchant.example';
 const id = '12345678-1234-4234-8234-123456789abc';
 const token = 'a'.repeat(64);
 interface Captured { method: string | undefined; path: string | undefined; headers: IncomingHttpHeaders; body: string }
@@ -27,7 +28,7 @@ async function fixture(t: test.TestContext, reply: { status?: number; headers?: 
     response.writeHead(reply.status ?? 200, { 'Content-Type': 'application/json', ...reply.headers }); response.end(reply.body ?? '{"ok":true}');
   });
   const upstreamPort = await listen(upstream); t.after(() => close(upstream));
-  const port = await availablePort(); const proxy = await startRehearsalProxy({ listenPort: port, upstream: `http://127.0.0.1:${upstreamPort}`, frontendOrigin: origin });
+  const port = await availablePort(); const proxy = await startRehearsalProxy({ listenPort: port, upstream: `http://127.0.0.1:${upstreamPort}`, frontendOrigin: origin, upstreamOrigin });
   t.after(() => close(proxy));
   const send = (path: string, options: { method?: string; headers?: Record<string, string>; body?: string; chunks?: string[]; noOrigin?: boolean } = {}) => new Promise<{ status: number; headers: IncomingHttpHeaders; body: string }>((resolve, reject) => {
     const outgoing = request({ hostname: '127.0.0.1', port, path, method: options.method ?? 'GET', headers: { ...(!options.noOrigin ? { Origin: origin } : {}), ...options.headers } }, (response) => {
@@ -39,13 +40,16 @@ async function fixture(t: test.TestContext, reply: { status?: number; headers?: 
 }
 
 test('rehearsal configuration requires explicit distinct literal loopback endpoints', () => {
-  const args = ['--listen-port', '39849', '--upstream', 'http://127.0.0.1:39850', '--frontend-origin', origin];
-  assert.deepEqual(parseRehearsalProxyArguments(args), { listenPort: 39849, upstream: 'http://127.0.0.1:39850', frontendOrigin: origin });
+  const args = ['--listen-port', '39849', '--upstream', 'http://127.0.0.1:39850', '--frontend-origin', origin, '--upstream-origin', upstreamOrigin];
+  assert.deepEqual(parseRehearsalProxyArguments(args), { listenPort: 39849, upstream: 'http://127.0.0.1:39850', frontendOrigin: origin, upstreamOrigin });
   for (const upstream of ['http://localhost:39850', 'https://127.0.0.1:39850', 'http://0.0.0.0:39850', 'http://127.0.0.2:39850', 'http://127.0.0.1:39850/', 'http://127.0.0.1:39850?token=x', 'http://user@127.0.0.1:39850', 'http://127.0.0.1:65536', 'http://127.0.0.1:80', 'http://127.0.0.1:039850', 'http://127.0.0.1:39849']) {
     const invalid = [...args]; invalid[3] = upstream; assert.throws(() => parseRehearsalProxyArguments(invalid));
   }
+  for (const upstreamOrigin of ['', 'http://merchant.example', 'https://merchant.example/', 'https://merchant.example/path', 'https://user@merchant.example', 'https://merchant.example?token=x', 'https://merchant.example#x']) {
+    const invalid = [...args]; invalid[7] = upstreamOrigin; assert.throws(() => parseRehearsalProxyArguments(invalid));
+  }
   for (const invalid of [[], args.slice(0, 4), [...args, '--listen-port', '39851'], [...args, '--host', '0.0.0.0'], ['--listen-port', '0', ...args.slice(2)], ['--listen-port', '1e4', ...args.slice(2)]]) assert.throws(() => parseRehearsalProxyArguments(invalid));
-  assert.throws(() => parseRehearsalProxyArguments([...args.slice(0, 4), '--frontend-origin', 'https://polkaswap.io']));
+  assert.throws(() => parseRehearsalProxyArguments([...args.slice(0, 4), '--frontend-origin', 'https://merchant.example']));
 });
 
 test('CLI without explicit flags prints usage and exits without starting a proxy', () => {
@@ -59,12 +63,12 @@ test('proxy binds IPv4 loopback and forwards catalog with fixed upstream identit
   const result = await send('/v1/catalog', { headers: { Cookie: 'private=value', Authorization: 'Bearer never-forward-on-catalog', 'X-Sora-Pay-Client-IP': '203.0.113.1', 'X-Forwarded-For': '203.0.113.2', 'X-Private-Header': 'discard' } });
   assert.equal(result.status, 200); assert.equal(result.headers['access-control-allow-origin'], origin); assert.equal(result.headers['cache-control'], 'no-store');
   for (const header of ['set-cookie', 'location', 'access-control-allow-credentials']) assert.equal(result.headers[header], undefined);
-  assert.deepEqual(captured[0]?.headers, { accept: 'application/json', origin: 'https://polkaswap.io', 'x-sora-pay-client-ip': '127.0.0.1', connection: 'close', host: `127.0.0.1:${upstreamPort}` });
+  assert.deepEqual(captured[0]?.headers, { accept: 'application/json', origin: upstreamOrigin, 'x-sora-pay-client-ip': '127.0.0.1', connection: 'close', host: `127.0.0.1:${upstreamPort}` });
 });
 
 test('missing or mismatched Origin and Host fail before contacting upstream', async (t) => {
   const { send, captured, port } = await fixture(t);
-  for (const options of [{ noOrigin: true }, { headers: { Origin: 'null' } }, { headers: { Origin: 'https://polkaswap.io' } }, { headers: { Origin: origin + '/' } }, { headers: { Host: `localhost:${port}` } }, { headers: { Host: `attacker.example:${port}` } }]) {
+  for (const options of [{ noOrigin: true }, { headers: { Origin: 'null' } }, { headers: { Origin: 'https://merchant.example' } }, { headers: { Origin: origin + '/' } }, { headers: { Host: `localhost:${port}` } }, { headers: { Host: `attacker.example:${port}` } }]) {
     const result = await send('/v1/catalog', options); assert.equal(result.status, 403); assert.equal(result.headers['access-control-allow-origin'], undefined);
   }
   assert.equal(captured.length, 0);
@@ -86,7 +90,7 @@ test('preflight permits only the selected customer method and necessary headers'
 
 test('customer creation, recovery and payment routes preserve exact private JSON and recovery authorization', async (t) => {
   const { send, captured } = await fixture(t);
-  const body = '{"fixture":"synthetic private contact","amount":"1.759225"}';
+  const body = '{"fixture":"synthetic private contact","amount":"1.25"}';
   for (const path of ['/v1/orders', '/v1/orders/recover-create', `/v1/orders/${id}/transaction`, `/v1/orders/${id}/payment-attempt`, `/v1/orders/${id}/payment-attempt/cancel`]) {
     const result = await send(path, { method: 'POST', headers: { 'Content-Type': 'application/json; charset=utf-8', Authorization: `Bearer ${token}` }, body });
     assert.equal(result.status, 200); assert.equal(captured.at(-1)?.path, path); assert.equal(captured.at(-1)?.body, body);

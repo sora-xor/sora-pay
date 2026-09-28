@@ -2,7 +2,7 @@
 
 `@sora/sora-pay/providers` supplies Node-only source ingestion. Nothing executes downloaded scripts, and no network request occurs in tests. Fetches use fixed HTTPS sources, refuse redirects, time out after 15 seconds, and enforce a 2 MB streaming limit.
 
-Polkaswap uses a fixed exact-XOR catalog calculated once at launch. It does **not** call the MUFG provider during normal operation. Its daily Japan Post refresh updates destination availability while retaining published XOR shipping amounts. The MUFG daily provider below remains reusable for other merchants that explicitly choose daily fiat conversion.
+Providers are optional server-side inputs. Choose an exact-XOR catalog to keep published amounts fixed, or explicitly configure fiat conversion and a merchant-selected USD/XOR rate. Carrier availability and merchant eligibility are separate: this library parses source data; the merchant owns product-specific route decisions and dispatch requirements.
 
 ## MUFG USD/JPY
 
@@ -33,26 +33,26 @@ The importer joins three official tables:
 - [Countries, zones and delivery-area coverage](https://www.post.japanpost.jp/service/send/oversea/list/delivery/ems/country/all_en.html).
 - [Current service availability](https://www.post.japanpost.jp/service/send/oversea/information/overview_en.html), retaining a link to the detailed [restriction chart](https://www.post.japanpost.jp/service/send/oversea/information/overview_en.pdf).
 
-The complete rate table contains 42 weight bands through 30 kg for each of five zones. Published rates already include the stated tentative extra charges; do not add a second surcharge. JPY prices are integer strings. Parcel weight is separate from token arithmetic; a merchant can use its estimated 120 g per sealed bag plus 80 g per outer parcel until weighed packaging replaces those estimates.
+The complete rate table contains 42 weight bands through 30 kg for each of five zones. Published rates already include the stated tentative extra charges; do not add a second surcharge. JPY prices are integer strings. Parcel weight is separate from token arithmetic; configure product and packaging weights for the actual fulfillment method, and verify packing before dispatch.
 
 `buildAvailableEmsRates` enables every mapped, fully covered, currently accepted carrier destination except an explicit merchant denylist. The optional `buildApprovedEmsRates` supports merchants that separately maintain a destination allowlist; it is not required. Both return the relay's shipping-table shape with `reviewedAt` as the retrieval date and a stable content-derived source version.
 
 For an exact-XOR merchant, automatic refresh only retains countries present in the same configured launch band and currently accepted by the carrier. Suspended countries can return to their original band when service resumes, at the frozen XOR price. Empty bands are omitted; a different zone or weight band is never substituted. Newly supported countries remain shipping inquiries until an explicit merchant catalog update adds them. This destination boundary does not itself establish food-import or organic-label approval, and saved orders retain their original quotes.
 
-A carrier tick is not a claim that a particular product clears import/customs rules. Merchants can additionally use `approvedShippingCountries` to restrict checkout. Polkaswap's worldwide release instead publishes only the reviewed routes in its shipping arrays; no separate Taiwan-only gate remains. Before dispatch, volunteers recheck the actual destination, product requirements, and current service. The store's refund policy covers unfulfillable orders.
+Carrier acceptance does not establish product import or customs eligibility. Merchants can restrict their shipping arrays and optionally use `approvedShippingCountries`. Maintain the corresponding product, destination and documentation review in the merchant application's runbook; recheck it with current carrier service before dispatch.
 
-`*` means restricted acceptance, not ordinary availability. Such countries, suspended/no-service entries, limited delivery regions, and countries without an explicit zone remain in the snapshot with `requiresReview: true` and reasons. They never silently become checkout destinations. The source currently restricts US EMS and has additional commercial-mail conditions; the generic importer does not assume that a tea sale qualifies as a personal gift. Shipping inquiries can handle exceptional destinations separately.
+`*` means restricted acceptance, not ordinary availability. Such countries, suspended/no-service entries, limited delivery regions, and countries without an explicit zone remain in the snapshot with `requiresReview: true` and reasons. They never silently become checkout destinations. The generic importer does not infer that a commercial shipment qualifies for a personal-use or gift exception. Shipping inquiries can handle exceptional destinations separately.
 
 The availability heading omits its year. We preserve its exact update label and the explicitly dated previous-announcement text instead of inventing a publication timestamp. `fetchedAt`, HTTP `Last-Modified` when present, and SHA-256 hashes give retrieval provenance. Version identity is derived from rates/statuses, so fetching unchanged content does not create a new price version. Carrier changes must be rechecked before dispatch.
 
-The checked-in `packages/providers/data/*.json` files are an audited launch snapshot, not an automatic permanently fresh fallback. Refresh official sources for daily operation. Tests use small constructed fixtures and the frozen launch snapshot; they perform no network calls.
+The checked-in `packages/providers/data/*.json` files are source snapshots captured for reproducibility, not an automatic permanently fresh fallback. Refresh official sources for daily operation. Tests use small constructed fixtures and the frozen source snapshots; they perform no network calls.
 
-## Japan Post services and frozen worldwide routes
+## Service-specific Japan Post routes
 
 Use `providers.shipping: "japan-post"` with a `carrier` object on each configured rate. The services are `ems`, `parcel-air`, `parcel-surface`, `small-packet-air`, `small-packet-surface`, and domestic-only `letter-pack-plus`. The provider reads the corresponding columns of the official availability chart, once per JST date. It never applies the EMS column to a parcel or small packet. SAL is excluded because the carrier has suspended it.
 
 `carrier.restrictedReviewVersion` can bind an explicitly reviewed restricted route to the exact semantic availability snapshot. A later status-table change invalidates that exception. `carrier.availabilityCountry` is only for documented territory coverage where no separate country row exists; a territory's own row takes precedence in catalog assembly. The original `japan-post-ems` importer remains available for existing deployments.
 
-`parsePostalRates` validates all five published zones, separating goods-capable small packets from letters, printed matter and D-mail. It checks every weight boundary and keeps included air-parcel surcharges exactly once. `buildFixedPostalRates` rounds JPY conversion upward to six XOR decimal places when a catalog is explicitly created. If a country quantity limit cuts through a tariff band, it retains the price of the band covering that weight. Daily availability checks never change these frozen amounts.
+`parsePostalRates` validates all five published zones, separating goods-capable small packets from letters, printed matter and D-mail. It checks every weight boundary and keeps included air-parcel surcharges exactly once. Merchants build their own catalog from these tariffs and supply exact XOR shipping amounts. Daily availability checks never change those frozen amounts.
 
-See [destination handling](shipping-destinations.md) for the merchant's service choices, source records, quantity limits, organic/import paperwork and domestic multi-envelope packing model. A conditional route is an order volunteers can fulfill after its documents are complete, not proof that those documents have already been obtained.
+Keep catalog construction, packing rules, destination approvals, source records, quantity/value limits and dispatch documents in the integrating merchant's repository. The provider parses carrier tariffs and service availability; it does not select products, determine parcel packing or establish import permission.

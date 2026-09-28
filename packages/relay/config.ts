@@ -2,7 +2,7 @@ import { POSTAL_SERVICES, type PostalRoute } from '../providers/japan-post-mail.
 import { readFileSync } from 'node:fs';
 import { decodeAddress, encodeAddress } from '@polkadot/util-crypto';
 import { xorPriceFromJpy, xorToCodec } from './pricing.js';
-import { storageMinimumBytes } from './storage-admission.js';
+import { storageAdmissionThresholds } from './storage-admission.js';
 
 /** Policy versions are snapshotted per order; missing historical snapshots retain full refunds. */
 export type RefundPolicy = { version: 1; mode: 'full' } | { version: 2; mode: 'net-network-fee' };
@@ -19,6 +19,8 @@ export interface MerchantConfig {
   enabled: boolean;
   /** Optional exact available-byte floor for new orders and customer signing leases. */
   storageMinimumFreeBytes?: string;
+  /** Optional startup/reset floor, at least the configured minimum; omission uses that minimum. */
+  storageResumeFreeBytes?: string;
   refundPolicy?: RefundPolicy;
   fulfillmentMode?: 'on-demand' | 'stocked';
   reviewEveryPaidOrder?: boolean;
@@ -51,7 +53,7 @@ export function accountAddress(value: string): string {
 /** Fail closed before opening a payment route if any merchant input is missing. */
 export function validateConfig(value: MerchantConfig): MerchantConfig {
   if (!value || typeof value.enabled !== 'boolean') throw new Error('Invalid configuration');
-  storageMinimumBytes(value.storageMinimumFreeBytes);
+  storageAdmissionThresholds(value.storageMinimumFreeBytes, value.storageResumeFreeBytes);
   resolveRefundPolicy(value.refundPolicy);
   const approved = value.approvedShippingCountries;
   if (approved !== undefined && (!Array.isArray(approved) || approved.some((code) => typeof code !== 'string' || !shippingCountryCodes.has(code)) || new Set(approved).size !== approved.length)) throw new Error('Invalid approved shipping countries');

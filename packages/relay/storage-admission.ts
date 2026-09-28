@@ -7,6 +7,14 @@ export function storageMinimumBytes(value?: string): bigint | undefined {
   return BigInt(value);
 }
 
+/** Validate merchant-selected thresholds; startup/reset uses the ordinary floor unless explicitly higher. */
+export function storageAdmissionThresholds(minimumFreeBytes?: string, resumeFreeBytes?: string): { minimum: bigint; resume: bigint } | undefined {
+  const minimum = storageMinimumBytes(minimumFreeBytes);
+  const resume = storageMinimumBytes(resumeFreeBytes);
+  if (resume !== undefined && (minimum === undefined || resume < minimum)) throw new Error('Invalid storage admission resume threshold');
+  return minimum === undefined ? undefined : { minimum, resume: resume ?? minimum };
+}
+
 /** Only blocks available to the relay user count, measured on the actual database volume. */
 export interface StorageSpace { bavail: bigint; bsize: bigint }
 
@@ -25,13 +33,14 @@ export interface StorageAdmissionPersistence { paused(value?: boolean): boolean 
 export function createStorageAdmissionGuard(options: {
   databasePath: string;
   minimumFreeBytes?: string;
+  resumeFreeBytes?: string;
   persistence: StorageAdmissionPersistence;
   probe?: (path: string) => StorageSpace;
   onPersistenceError?: () => void;
 }): { allowed(): boolean; reset(): void } {
-  const minimum = storageMinimumBytes(options.minimumFreeBytes);
-  if (minimum === undefined) return { allowed: () => true, reset: () => { throw new Error('Storage admission guard is not configured'); } };
-  const resumeMinimum = minimum > 10n * 1024n ** 3n ? minimum : 10n * 1024n ** 3n;
+  const thresholds = storageAdmissionThresholds(options.minimumFreeBytes, options.resumeFreeBytes);
+  if (thresholds === undefined) return { allowed: () => true, reset: () => { throw new Error('Storage admission guard is not configured'); } };
+  const { minimum, resume: resumeMinimum } = thresholds;
   const available = (floor: bigint): boolean => storageAdmissionAvailable(options.databasePath, floor, options.probe);
   let paused = true;
   let pauseNeedsPersistence = false;

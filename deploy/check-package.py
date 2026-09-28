@@ -6,11 +6,10 @@ import sys
 import tarfile
 
 ROOT_FILES = {'LICENSE', 'README.md', 'package.json'}
-DOCS = {'docs/relay.md', 'docs/providers.md', 'docs/staging.md', 'docs/mof-capacity-policy.md', 'docs/shipping-destinations.md'}
+DOCS = {'docs/relay.md', 'docs/providers.md', 'docs/staging.md'}
 DEPLOY = {f'deploy/{name}' for name in (
-    'archive-stage.py', 'check-package.py', 'build-worldwide-catalog.mjs', 'check-readiness.mjs', 'check-admission-ingress.py',
-    'merchant.disabled.json.example', 'merchant.polkaswap.json.example', 'merchant.polkaswap-worldwide.json.example',
-    'shipping/tea-destinations.json', 'shipping/japan-post-rates.json', 'shipping/japan-post-availability.json',
+    'archive-stage.py', 'check-package.py', 'check-readiness.mjs', 'check-admission-ingress.py',
+    'merchant.disabled.json.example',
     'nginx.conf.example', 'org.sora.sora-pay-relay.plist.example',
     'relay.env.example', 'run-relay.sh', 'runtime.json', 'rehearsal-proxy.mjs',
     'stage-relay.mjs', 'staging-utils.mjs',
@@ -35,9 +34,9 @@ def public_path(path: str) -> bool:
     if path in ROOT_FILES | DOCS | DEPLOY | SNAPSHOTS | EXAMPLES:
         return True
     if parts and parts[0] == 'dist' and len(parts) >= 3:
-        return parts[1] in {'core', 'widget', 'relay', 'providers'} and path.endswith(('.js', '.js.map', '.d.ts', '.d.ts.map'))
+        return parts[1] in {'core', 'widget', 'relay', 'providers'} and not parts[-1].startswith('shipping-rates.') and path.endswith(('.js', '.js.map', '.d.ts', '.d.ts.map'))
     if parts and parts[0] == 'packages' and len(parts) >= 3:
-        return parts[1] in {'core', 'widget', 'relay', 'providers'} and path.endswith('.ts')
+        return parts[1] in {'core', 'widget', 'relay', 'providers'} and parts[-1] != 'shipping-rates.ts' and path.endswith('.ts')
     return False
 
 

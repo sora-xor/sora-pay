@@ -16,12 +16,12 @@ function fixture(policy = netPolicy) {
   let now = epoch;
   const config = validateConfig({
     enabled: true, fulfillmentMode: 'on-demand', refundPolicy: policy, version: 'test',
-    merchant: { id: 'test', name: 'Test', operatorName: 'Test', supportTelegram: 'sora_xor', dispatchPolicy: 'Test', customsPolicy: 'Test', privacyPolicy: 'Test', cancellationPolicy: 'Test' },
+    merchant: { id: 'test', name: 'Test', operatorName: 'Test', supportTelegram: 'example_support', dispatchPolicy: 'Test', customsPolicy: 'Test', privacyPolicy: 'Test', cancellationPolicy: 'Test' },
     pricing: { kind: 'exact-xor', version: 'test', jpyPerUsd: '', usdPerXor: '', fxSource: '', fxDate: '' },
     product: { id: 'test', name: 'Test', grams: 100, packedGrams: 120, priceXor: '0.000001' },
     shipping: [{ id: 'test', label: 'Test', countries: ['JP'], maxGrams: 500, priceXor: '0', reviewedAt: '2026-09-26' }],
     chain: { genesisHash: `0x${'a'.repeat(64)}`, assetId: NATIVE_XOR, decimals: 6, denomination: '1', recipient, rpcUrl: 'wss://example.test', startBlock: 100 },
-    allowedOrigins: ['https://polkaswap.io'], retentionDays: 30,
+    allowedOrigins: ['https://merchant.example'], retentionDays: 30,
   });
   const store = new OrderStore(':memory:', config, key, () => now);
   const input = { productId: 'test', quantity: 1, shippingRateId: 'test', payer, idempotencyKey: randomUUID(), address: { name: 'Synthetic', line1: 'Synthetic', city: 'Synthetic', country: 'JP' }, contact: { type: 'telegram', value: '@synthetic' } };

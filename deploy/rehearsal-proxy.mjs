@@ -3,7 +3,7 @@
 import { parseRehearsalProxyArguments, startRehearsalProxy } from '../dist/relay/rehearsal-proxy.js';
 
 if (process.argv.length === 2 || process.argv.slice(2).includes('--help')) {
-  console.log('Usage: node deploy/rehearsal-proxy.mjs --listen-port 39849 --upstream http://127.0.0.1:39850 --frontend-origin http://127.0.0.1:41829');
+  console.log('Usage: node deploy/rehearsal-proxy.mjs --listen-port 39849 --upstream http://127.0.0.1:39850 --frontend-origin http://127.0.0.1:41829 --upstream-origin https://merchant.example');
 } else {
   try {
     const options = parseRehearsalProxyArguments(process.argv.slice(2));

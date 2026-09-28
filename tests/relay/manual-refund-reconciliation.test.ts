@@ -18,10 +18,10 @@ const start = Date.parse('2026-09-27T12:00:00.000Z');
 function fixture(path = ':memory:', mode: 'agreed' | 'full' | 'net' = 'agreed', fundingAmount = gross) {
   let now = start;
   const config = validateConfig({ enabled: true, version: 'test', fulfillmentMode: 'on-demand', refundPolicy: mode === 'net' ? { version: 2, mode: 'net-network-fee' } : { version: 1, mode: 'full' },
-    merchant: { id: 'test', name: 'Synthetic', operatorName: 'Synthetic', supportTelegram: 'sora_xor', dispatchPolicy: 'Test', customsPolicy: 'Test', privacyPolicy: 'Test', cancellationPolicy: 'Test' },
+    merchant: { id: 'test', name: 'Synthetic', operatorName: 'Synthetic', supportTelegram: 'example_support', dispatchPolicy: 'Test', customsPolicy: 'Test', privacyPolicy: 'Test', cancellationPolicy: 'Test' },
     pricing: { kind: 'exact-xor', version: 'test', jpyPerUsd: '', usdPerXor: '', fxDate: '', fxSource: '' },
     product: { id: 'test', name: 'Synthetic', grams: 100, packedGrams: 120, priceXor: '5.453596' }, shipping: [{ id: 'test', countries: ['JP'], maxGrams: 500, priceXor: '0', label: 'Synthetic', reviewedAt: '2026-09-27' }],
-    chain: { genesisHash: `0x${'a'.repeat(64)}`, assetId: NATIVE_XOR, recipient: merchant, decimals: 18, denomination: '1', rpcUrl: 'wss://example.test', startBlock: 100 }, allowedOrigins: ['https://polkaswap.io'], retentionDays: 30 });
+    chain: { genesisHash: `0x${'a'.repeat(64)}`, assetId: NATIVE_XOR, recipient: merchant, decimals: 18, denomination: '1', rpcUrl: 'wss://example.test', startBlock: 100 }, allowedOrigins: ['https://merchant.example'], retentionDays: 30 });
   const store = new OrderStore(path, config, key, () => now);
   const input = () => ({ productId: 'test', quantity: 1, shippingRateId: 'test', payer: customer, idempotencyKey: randomUUID(), address: { name: 'Synthetic', line1: 'Synthetic', city: 'Synthetic', country: 'JP' }, contact: { type: 'telegram' as const, value: '@synthetic' } });
   const order = store.create(input());
